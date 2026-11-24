@@ -1,36 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mechanical Sports Gala 2026 — Vercel + Neon DB + Groq AI Portal
 
-## Getting Started
+Complete full-stack registration and organizer management system built with **Next.js (App Router)**, **Neon PostgreSQL**, and **Groq AI**.
 
-First, run the development server:
+## Features
+- **Public Registration Portal (`/`)**: Mobile-first 6-step wizard supporting all 10 official sports, 1,000 PKR Individual All-Access Pass, dynamic team/pair/solo rosters, Cash & JazzCash (`03281159050` — Abdul Ahad) with compressed mobile receipt uploads, and 1-page printable PDF Proof of Registration Slip.
+- **Organizer Management Portal (`/admin`)**: Password-protected desk portal with live KPIs, Roll Number / Name search, 1-click **Verify & Approve**, JazzCash Receipt Viewer, Roster Eligibility controls, Manual Payment entry, Live Game/Settings Editor, and 1-click Excel/CSV exports.
+- **Gala AI Assistant (Groq)**: Built-in agentic assistant inside `/admin` (`llama-3.3-70b-versatile`) with read-only database tools to answer organizer questions in plain English or Roman Urdu.
+- **Zero Manual DB Setup**: Tables (`event_settings`, `games`, `registrations`, `players`, `payments`) and all 10 official sports & fees are **automatically created and seeded** on the first request once `DATABASE_URL` is connected.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy to Vercel in 3 Minutes
+1. Push this folder to a GitHub repository.
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → Import your repo.
+3. Add **Neon PostgreSQL**:
+   - Either connect Neon via **Vercel Storage → Neon** (auto-sets `DATABASE_URL`), OR paste your Neon connection string from [console.neon.tech](https://console.neon.tech).
+4. Add Environment Variables in Vercel Project Settings:
+   - `DATABASE_URL` — Neon PostgreSQL URL
+   - `GROQ_API_KEY` — Free API key from [console.groq.com](https://console.groq.com)
+   - `ADMIN_PASSWORD` — Your organizer login password for `/admin`
+   - `SESSION_SECRET` — Any random secret string
+5. Click **Deploy**!
+   - Student link: `https://your-project.vercel.app/`
+   - Organizer Desk + AI Assistant: `https://your-project.vercel.app/admin`
