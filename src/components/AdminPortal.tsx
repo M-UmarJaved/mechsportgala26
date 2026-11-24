@@ -3,18 +3,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+  AlertCircle,
   ArrowLeft,
   Banknote,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Download,
   Eye,
   EyeOff,
   FileImage,
+  FileSpreadsheet,
+  HelpCircle,
+  KeyRound,
   Loader2,
   Lock,
   LogOut,
   Plus,
+  Printer,
   RefreshCw,
   Save,
   Search,
@@ -87,6 +94,8 @@ export function AdminPortal() {
   const [quickFilter, setQuickFilter] = useState<
     'all' | 'needs_verification' | 'jazzcash_pending' | 'cash_pending' | 'paid'
   >('all');
+  const [showGuide, setShowGuide] = useState(true);
+  const [rosterExportGame, setRosterExportGame] = useState('');
 
   const [activeTab, setActiveTab] = useState<AdminTab>('desk');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -402,19 +411,19 @@ export function AdminPortal() {
     );
   }
 
-  // LOGIN GATE
+  // SECRET KEY ACCESS GATE
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-[radial-gradient(circle_at_50%_0%,#1A2B52_0%,#060B18_85%)] flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-7 sm:p-8">
           <div className="w-12 h-12 rounded-2xl bg-[#0A1226] text-amber-300 flex items-center justify-center mb-4">
-            <Lock className="w-6 h-6" />
+            <KeyRound className="w-6 h-6" />
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 mb-1">
-            Organizer Desk Login
+            Organizer Secret Access
           </h1>
           <p className="text-sm text-slate-500 mb-6">
-            Mechanical Sports Gala 2026 — Verification, Database Management &amp; Gala AI
+            No account or signup required. Enter the Mechanical Sports Gala secret key to open the Management Desk, Reports &amp; Gala AI.
           </p>
 
           {loginError && (
@@ -426,22 +435,23 @@ export function AdminPortal() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">
-                Organizer Password / PIN
+                Organizer Secret Key
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter admin password"
+                  placeholder="Enter secret access key..."
                   required
-                  className="w-full pl-4 pr-11 py-3 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-[#0A1226] focus:outline-none text-sm"
+                  autoFocus
+                  className="w-full pl-4 pr-11 py-3 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-[#0A1226] focus:outline-none text-sm font-mono tracking-wider"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
-                  aria-label="Toggle password visibility"
+                  aria-label="Toggle secret key visibility"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -453,8 +463,8 @@ export function AdminPortal() {
               disabled={loggingIn}
               className="w-full py-3 rounded-xl bg-[#0A1226] hover:bg-[#152244] text-amber-300 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
             >
-              {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-              Sign In to Admin Portal
+              {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+              Unlock Organizer Desk
             </button>
           </form>
 
@@ -592,11 +602,54 @@ export function AdminPortal() {
           </div>
         </div>
 
+        {/* Collapsible 30-Second Team Guide */}
+        <div className="no-print bg-amber-50/80 border border-amber-200 rounded-2xl mb-5 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowGuide(!showGuide)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left cursor-pointer"
+          >
+            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-950">
+              <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              Quick Organizer Team Guide — How to Manage Registrations &amp; Reports
+            </span>
+            {showGuide ? (
+              <ChevronUp className="w-4 h-4 text-amber-700 shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-amber-700 shrink-0" />
+            )}
+          </button>
+          {showGuide && (
+            <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs text-slate-700">
+              <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                <strong className="text-[#0A1226] block mb-0.5">1. Cash at Desk</strong>
+                Type student&apos;s Roll No in Search → Collect cash → Click green{' '}
+                <strong className="text-emerald-700">Approve</strong>. Status turns Verified instantly.
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                <strong className="text-[#0A1226] block mb-0.5">2. JazzCash Online</strong>
+                Tap <strong>JazzCash Receipts Pending</strong> → Click blue{' '}
+                <strong className="text-blue-700">Receipt</strong> → Confirm transfer to{' '}
+                <span className="font-mono font-bold">{settings?.jazzcash_number || '03281159050'}</span> → Approve.
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                <strong className="text-[#0A1226] block mb-0.5">3. Walk-In Students</strong>
+                Click yellow <strong>+ Add Entry</strong> at top right to register &amp; mark someone Paid directly from the desk.
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-amber-200/80">
+                <strong className="text-[#0A1226] block mb-0.5">4. Reports &amp; Gala AI</strong>
+                Open <strong>Reports &amp; Downloads</strong> for Excel/PDF reports, or open{' '}
+                <strong>Ask Gala AI</strong> to ask questions in English or Roman Urdu.
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5">
+        <div className="no-print grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5">
           {[
             { id: 'desk', label: 'Desk Verification', icon: Search },
-            { id: 'metrics', label: 'Sports & CSV', icon: BarChart3 },
+            { id: 'metrics', label: 'Reports & Downloads', icon: BarChart3 },
             { id: 'ai', label: 'Ask Gala AI', icon: Sparkles },
             { id: 'settings', label: 'Games & Settings', icon: Sliders },
           ].map((tab) => {
@@ -1168,50 +1221,205 @@ export function AdminPortal() {
           </div>
         )}
 
-        {/* TAB 2: SPORT METRICS & CSV EXPORTS */}
+        {/* TAB 2: REPORTS & DOWNLOADS CENTER */}
         {activeTab === 'metrics' && (
           <div className="space-y-5">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-wrap items-center justify-between gap-3">
+            {/* Reports Header & Print PDF */}
+            <div className="no-print bg-white rounded-2xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="font-display font-bold text-lg text-slate-900">
-                  Export Live Database to Excel / CSV
+                  Official Reports &amp; Excel Downloads
                 </h2>
-                <p className="text-xs text-slate-500">
-                  Download clean UTF-8 spreadsheets anytime for match fixtures or financial audits.
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Every report below pulls live data from your Neon database. Click any button to download an Excel-ready CSV file or print a PDF summary.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1226] hover:bg-[#152244] text-amber-300 text-xs sm:text-sm font-bold cursor-pointer shrink-0"
+              >
+                <Printer className="w-4 h-4" /> Print / Save PDF Summary
+              </button>
+            </div>
+
+            {/* 5 Downloadable Report Cards */}
+            <div className="no-print grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Report 1: Master Registrations */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-[#0A1226] text-amber-300 flex items-center justify-center">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                      {kpis?.totalEntries ?? 0} Entries
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    1. Master Registrations Report
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Every team &amp; individual entry with Registration ID, fees due, verified paid, balance, payment method, and status.
+                  </p>
+                </div>
                 <a
                   href="/api/admin/export?type=registrations"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0A1226] text-amber-300 text-xs font-bold"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1226] hover:bg-[#152244] text-amber-300 text-xs font-bold"
                 >
-                  <Download className="w-4 h-4" /> Registrations CSV
+                  <Download className="w-4 h-4" /> Download Registrations (Excel/CSV)
                 </a>
+              </div>
+
+              {/* Report 2: Athlete Rosters (All or By Sport) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                      <Users className="w-5 h-5" />
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                      {kpis?.totalPlayers ?? 0} Athletes
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    2. Athlete Rosters &amp; Match Sheets
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 mb-3">
+                    Full list of players with Roll Numbers, Departments &amp; Eligibility. Pick a specific sport or export all 10 sports.
+                  </p>
+                  <select
+                    value={rosterExportGame}
+                    onChange={(e) => setRosterExportGame(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-slate-50"
+                  >
+                    <option value="">All 10 Sports Combined</option>
+                    {games.map((g) => (
+                      <option key={g.name} value={g.name}>
+                        {g.name} Players Only
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <a
-                  href="/api/admin/export?type=players"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold"
+                  href={
+                    rosterExportGame
+                      ? `/api/admin/export?type=players&game=${encodeURIComponent(rosterExportGame)}`
+                      : '/api/admin/export?type=players'
+                  }
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
                 >
-                  <Download className="w-4 h-4" /> Players CSV
+                  <Download className="w-4 h-4" />
+                  {rosterExportGame ? `Download ${rosterExportGame} Roster` : 'Download All Players (CSV)'}
                 </a>
+              </div>
+
+              {/* Report 3: Financial & Payments Ledger */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                      <Banknote className="w-5 h-5" />
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
+                      {(kpis?.totalVerifiedPaid ?? 0).toLocaleString()} PKR
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    3. Payments &amp; Cash/JazzCash Ledger
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Complete financial audit log of every Cash &amp; JazzCash payment, TID reference, verification status, and timestamps.
+                  </p>
+                </div>
                 <a
                   href="/api/admin/export?type=payments"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
                 >
-                  <Download className="w-4 h-4" /> Payments CSV
+                  <Download className="w-4 h-4" /> Download Payments Ledger (CSV)
                 </a>
+              </div>
+
+              {/* Report 4: Unpaid / Pending Dues Follow-Up */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5" />
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-700">
+                      {(kpis?.totalOutstanding ?? 0).toLocaleString()} PKR Due
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    4. Unpaid / Pending Dues List
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Only students &amp; teams with remaining unpaid balances, including their phone numbers for quick desk follow-up.
+                  </p>
+                </div>
+                <a
+                  href="/api/admin/export?type=unpaid"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
+                >
+                  <Download className="w-4 h-4" /> Download Unpaid List (CSV)
+                </a>
+              </div>
+
+              {/* Report 5: Sport-by-Sport Summary */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs md:col-span-2">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5" />
+                    </span>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800">
+                      10 Sports Overview
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    5. Sport-by-Sport Executive Summary
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Clean 10-row summary of entries, athletes, total fees, verified collections, and remaining balances per sport — ideal for department heads.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="/api/admin/export?type=summary"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold"
+                  >
+                    <Download className="w-4 h-4" /> Download Summary CSV
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" /> Print / Save as PDF
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-              <div className="px-5 py-4 border-b border-slate-200">
-                <h3 className="font-display font-bold text-base text-slate-900">
-                  Sport-by-Sport Live Reconciliation
-                </h3>
+            {/* Live Printable Sport-by-Sport Table */}
+            <div className="print-slip bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-bold text-base text-slate-900">
+                    Live Sport-by-Sport Reconciliation Report
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cash Verified: {(kpis?.cashVerified ?? 0).toLocaleString()} PKR · JazzCash Verified:{' '}
+                    {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR · Total Verified:{' '}
+                    {(kpis?.totalVerifiedPaid ?? 0).toLocaleString()} PKR
+                  </p>
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-600 text-xs uppercase border-b border-slate-200">
+                    <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase border-b border-slate-200">
                       <th className="py-3 px-4">Sport</th>
                       <th className="py-3 px-4">Entries</th>
                       <th className="py-3 px-4">Athletes</th>
@@ -1228,18 +1436,20 @@ export function AdminPortal() {
                           <td className="py-3 px-4 font-bold text-slate-900">{gameName}</td>
                           <td className="py-3 px-4">{s.entries}</td>
                           <td className="py-3 px-4">{s.players}</td>
-                          <td className="py-3 px-4">{s.feesDue.toLocaleString()} PKR</td>
-                          <td className="py-3 px-4 text-emerald-700 font-semibold">
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {s.feesDue.toLocaleString()} PKR
+                          </td>
+                          <td className="py-3 px-4 text-emerald-700 font-semibold whitespace-nowrap">
                             {s.verifiedPaid.toLocaleString()} PKR
                           </td>
                           <td
-                            className={`py-3 px-4 font-bold ${
+                            className={`py-3 px-4 font-bold whitespace-nowrap ${
                               s.outstanding > 0 ? 'text-red-600' : 'text-emerald-700'
                             }`}
                           >
                             {s.outstanding.toLocaleString()} PKR
                           </td>
-                          <td className="py-3 px-4 text-xs">
+                          <td className="py-3 px-4 text-xs whitespace-nowrap">
                             <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold mr-1">
                               {s.approved} Appr
                             </span>

@@ -9,6 +9,8 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const MAX_ATTEMPTS = 8;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
+export const HARDCODED_ADMIN_SECRET_KEY = 'MECHGALA2026';
+
 function getSessionSecret(): string {
   return (
     process.env.SESSION_SECRET ||
@@ -18,7 +20,7 @@ function getSessionSecret(): string {
 }
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || 'admin2026';
+  return process.env.ADMIN_PASSWORD || HARDCODED_ADMIN_SECRET_KEY;
 }
 
 export function verifyPasswordTimingSafe(input: string): boolean {

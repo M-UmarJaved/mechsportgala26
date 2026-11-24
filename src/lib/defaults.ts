@@ -3,7 +3,7 @@ import { EventSettings, GameConfig } from './types';
 export const DEFAULT_SETTINGS: EventSettings = {
   event_title: 'Mechanical Sports Gala 2026',
   venue: 'Sports Grounds & Complex',
-  registration_deadline: '10 December 2026',
+  registration_deadline: '26 December 2026',
   currency: 'PKR',
   package_enabled: true,
   package_fee: 1000,

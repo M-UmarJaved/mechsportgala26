@@ -527,7 +527,7 @@ export function RegistrationWizard() {
 
           <div className="flex items-center justify-center gap-2 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase text-amber-300/90 mb-2">
             <Award className="w-4 h-4" />
-            <span>Mechanical Engineering Department</span>
+            <span>Department of Mechanical Engineering</span>
           </div>
           <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
             {settings.event_title}
