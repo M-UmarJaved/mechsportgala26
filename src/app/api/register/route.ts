@@ -185,13 +185,9 @@ export async function POST(req: NextRequest) {
           : `${registrant.name.trim()}'s ${game.entry_type}`);
 
       const feeDue = feeInfo.fee;
-      const initialPaymentStatus = feeDue === 0 ? 'Paid' : 'Unpaid';
-      const organizerNote =
-        paymentMethod === 'JazzCash'
-          ? `Method: JazzCash${transactionRef ? ` | TID: ${transactionRef}` : ''} | Receipt uploaded`
-          : 'Method: Cash at Registration Desk';
+      const organizerNote = `Method: JazzCash${transactionRef ? ` | TID: ${transactionRef}` : ''} | Receipt uploaded`;
 
-      // Insert registration
+      // Insert registration as Paid & Confirmed automatically
       await sql`
         INSERT INTO registrations (
           registration_id, submitted_at, game_name, format, team_name,
@@ -204,8 +200,8 @@ export async function POST(req: NextRequest) {
           ${regId}, ${submittedAt}, ${game.name}, ${feeInfo.format}, ${teamOrEntryName},
           ${registrant.name.trim()}, ${registrant.studentId.trim()}, ${registrant.phone.trim()},
           ${registrant.email?.trim() || ''}, ${registrant.department.trim()},
-          ${registrant.institution?.trim() || ''}, ${playersList.length}, ${feeDue}, 0, ${feeDue},
-          ${paymentMethod}, ${initialPaymentStatus}, 'Pending Review', ${feeInfo.isPackageCovered},
+          ${registrant.institution?.trim() || ''}, ${playersList.length}, ${feeDue}, ${feeDue}, 0,
+          ${paymentMethod}, 'Paid', 'Approved', ${feeInfo.isPackageCovered},
           ${transactionRef}, ${idx === 0 ? receiptData : null}, ${organizerNote}
         )
       `;
@@ -230,25 +226,25 @@ export async function POST(req: NextRequest) {
             ${p.name.trim()}, ${p.studentId.trim()}, ${p.department.trim()},
             ${p.phone?.trim() || registrant.phone.trim()},
             ${p.email?.trim() || registrant.email?.trim() || ''},
-            ${p.gender?.trim() || ''}, 'Pending', ${p.notes?.trim() || ''}
+            ${p.gender?.trim() || ''}, 'Verified', ${p.notes?.trim() || ''}
           )
         `;
       }
 
-      // Insert pending payment row if fee > 0
+      // Insert confirmed payment row if fee > 0
       if (feeDue > 0) {
         const payId = await nextPaymentId();
         await sql`
           INSERT INTO payments (
             payment_id, created_at, registration_id, game_name, payer_name,
-            amount, method, reference, receipt_data, status, verified_by, notes
+            amount, method, reference, receipt_data, status, verified_by, verified_at, notes
           )
           VALUES (
             ${payId}, ${submittedAt}, ${regId}, ${game.name}, ${registrant.name.trim()},
             ${feeDue}, ${paymentMethod},
-            ${transactionRef || (paymentMethod === 'JazzCash' ? 'JazzCash screenshot attached' : 'Cash at registration desk')},
-            ${receiptData}, 'Pending', '',
-            ${paymentMethod === 'JazzCash' ? 'Pending organizer verification of JazzCash receipt' : 'Cash payable at registration desk'}
+            ${transactionRef || 'JazzCash screenshot attached'},
+            ${receiptData}, 'Verified', 'Online Form (JazzCash)', ${submittedAt},
+            'Online JazzCash payment with receipt screenshot'
           )
         `;
       }

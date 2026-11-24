@@ -157,11 +157,11 @@ export async function POST(req: NextRequest) {
         ? Math.max(0, Number(body.customFee))
         : game.fee_amount;
 
-    const verifiedPaid = markPaidAndApproved ? feeDue : 0;
-    const balance = Math.max(0, feeDue - verifiedPaid);
-    const paymentStatus = balance === 0 ? 'Paid' : 'Unpaid';
-    const registrationStatus = markPaidAndApproved ? 'Approved' : 'Pending Review';
-    const eligibilityStatus = markPaidAndApproved ? 'Verified' : 'Pending';
+    const verifiedPaid = feeDue;
+    const balance = 0;
+    const paymentStatus = 'Paid';
+    const registrationStatus = 'Approved';
+    const eligibilityStatus = 'Verified';
 
     await sql`
       INSERT INTO registrations (
@@ -202,10 +202,10 @@ export async function POST(req: NextRequest) {
         VALUES (
           ${payId}, ${submittedAt}, ${regId}, ${game.name}, ${captainName},
           ${feeDue}, ${paymentMethod},
-          ${transactionRef || 'Desk Walk-In Registration'},
-          ${markPaidAndApproved ? 'Verified' : 'Pending'},
-          ${markPaidAndApproved ? 'Organizer Desk' : ''},
-          ${markPaidAndApproved ? submittedAt : null},
+          ${transactionRef || 'Classroom Cash Collection'},
+          'Verified',
+          'Organizer Desk',
+          ${submittedAt},
           ${notes || 'Added directly via Organizer Desk'}
         )
       `;

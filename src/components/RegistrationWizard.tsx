@@ -1520,16 +1520,8 @@ export function RegistrationWizard() {
                     Submitted: {new Date(submissionResult.submissionTime).toLocaleString()}
                   </p>
                 </div>
-                <span
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                    submissionResult.paymentMethod === 'JazzCash'
-                      ? 'bg-amber-50 text-amber-800 border-amber-300'
-                      : 'bg-blue-50 text-blue-800 border-blue-300'
-                  }`}
-                >
-                  {submissionResult.paymentMethod === 'JazzCash'
-                    ? 'JazzCash Receipt Under Verification'
-                    : 'Cash Due at Registration Desk'}
+                <span className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-emerald-50 text-emerald-800 border-emerald-300">
+                  Registration Confirmed · Paid (JazzCash)
                 </span>
               </div>
 
@@ -1619,12 +1611,10 @@ export function RegistrationWizard() {
 
               <div className="text-xs text-slate-500 border-t border-slate-200 pt-3 flex flex-col sm:flex-row justify-between gap-2">
                 <span>
-                  {submissionResult.paymentMethod === 'Cash'
-                    ? 'Bring this slip + Roll Number to the Mechanical Sports Desk to pay cash and complete verification.'
-                    : `Your JazzCash receipt is under review by ${settings.jazzcash_title} / Sports Committee.`}
+                  Your registration &amp; JazzCash receipt have been recorded. Keep this slip for check-in on event day.
                 </span>
-                <span className="font-semibold text-slate-700">
-                  Eligibility Status: Pending Desk Verification
+                <span className="font-semibold text-emerald-700">
+                  Status: Registration Confirmed
                 </span>
               </div>
             </div>

@@ -11,10 +11,10 @@ interface ChatMessage {
 
 const QUICK_PROMPTS = [
   'Give me a complete event summary of registrations and revenue',
-  'How much Cash vs JazzCash have we verified so far?',
-  'List all unpaid registrations',
+  'How much Cash vs JazzCash have we collected so far?',
   'Show sport-by-sport registration counts',
-  'Show all pending JazzCash receipts to verify',
+  'List all Cricket teams registered',
+  'Which session has the most registrations?',
 ];
 
 function formatInline(text: string): React.ReactNode {

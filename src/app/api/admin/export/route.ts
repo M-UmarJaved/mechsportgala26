@@ -46,20 +46,19 @@ export async function GET(req: NextRequest) {
         'Session',
         'Phone',
         'Email',
-        'Eligibility Status',
         'Notes',
       ];
       const data = gameFilter
         ? await sql`
             SELECT registration_id, game_name, format, team_name, player_no,
-                   full_name, student_id, department, phone, email, eligibility_status, notes
+                   full_name, student_id, department, phone, email, notes
             FROM players
             WHERE game_name = ${gameFilter}
             ORDER BY registration_id ASC, player_no ASC
           `
         : await sql`
             SELECT registration_id, game_name, format, team_name, player_no,
-                   full_name, student_id, department, phone, email, eligibility_status, notes
+                   full_name, student_id, department, phone, email, notes
             FROM players ORDER BY id ASC
           `;
       rows = data as Record<string, unknown>[];
@@ -67,49 +66,20 @@ export async function GET(req: NextRequest) {
       filename = 'sports-gala-payments-ledger.csv';
       headers = [
         'Payment ID',
-        'Created At',
+        'Date / Time',
         'Registration ID',
         'Game',
         'Payer Name',
-        'Amount (PKR)',
-        'Method',
-        'Reference',
-        'Status',
-        'Verified By',
-        'Verified At',
+        'Amount Paid (PKR)',
+        'Payment Method',
+        'Transaction Ref / TID',
+        'Recorded By',
         'Notes',
       ];
       const data = await sql`
         SELECT payment_id, created_at, registration_id, game_name, payer_name,
-               amount, method, reference, status, verified_by, verified_at, notes
+               amount, method, reference, verified_by, notes
         FROM payments ORDER BY id ASC
-      `;
-      rows = data as Record<string, unknown>[];
-    } else if (type === 'unpaid') {
-      filename = 'sports-gala-unpaid-pending-dues.csv';
-      headers = [
-        'Registration ID',
-        'Submitted At',
-        'Game',
-        'Team / Entry',
-        'Student / Captain',
-        'Roll No / Student ID',
-        'Department',
-        'Phone',
-        'Payment Method',
-        'Fee Due (PKR)',
-        'Verified Paid (PKR)',
-        'Balance Remaining (PKR)',
-        'Payment Status',
-        'Transaction Ref',
-      ];
-      const data = await sql`
-        SELECT registration_id, submitted_at, game_name, team_name, captain_name,
-               captain_student_id, department, contact_phone, payment_method,
-               fee_due, verified_paid, balance, payment_status, transaction_ref
-        FROM registrations
-        WHERE payment_status <> 'Paid' OR balance > 0
-        ORDER BY id DESC
       `;
       rows = data as Record<string, unknown>[];
     } else if (type === 'summary') {
@@ -118,14 +88,10 @@ export async function GET(req: NextRequest) {
         'Sport',
         'Category',
         'Configured Fee (PKR)',
-        'Open?',
+        'Registration Open?',
         'Total Entries',
         'Total Athletes',
-        'Total Fees Due (PKR)',
-        'Verified Paid (PKR)',
-        'Outstanding Balance (PKR)',
-        'Approved Entries',
-        'Pending Review',
+        'Total Revenue Collected (PKR)',
       ];
       const data = await sql`
         SELECT g.name,
@@ -134,11 +100,7 @@ export async function GET(req: NextRequest) {
                CASE WHEN g.is_open THEN 'Open' ELSE 'Closed' END AS is_open,
                COUNT(r.id)::int AS entries,
                COALESCE(SUM(r.player_count), 0)::int AS athletes,
-               COALESCE(SUM(r.fee_due), 0)::int AS fees_due,
-               COALESCE(SUM(r.verified_paid), 0)::int AS verified_paid,
-               COALESCE(SUM(r.balance), 0)::int AS outstanding,
-               COUNT(r.id) FILTER (WHERE r.registration_status = 'Approved')::int AS approved,
-               COUNT(r.id) FILTER (WHERE r.registration_status = 'Pending Review')::int AS pending
+               COALESCE(SUM(r.fee_due), 0)::int AS total_collected
         FROM games g
         LEFT JOIN registrations r ON r.game_name = g.name
         GROUP BY g.id, g.name, g.entry_type, g.fee_amount, g.is_open, g.sort_order
@@ -153,28 +115,24 @@ export async function GET(req: NextRequest) {
         'Game',
         'Format',
         'Team / Entry Name',
-        'Captain / Registrant',
+        'Student / Captain',
         'Roll No / Student ID',
         'Contact Phone',
         'Email',
         'Session',
         'Section',
         'Player Count',
-        'Fee Due (PKR)',
-        'Verified Paid (PKR)',
-        'Balance (PKR)',
+        'Fee Paid (PKR)',
         'Payment Method',
-        'Payment Status',
-        'Registration Status',
         'Package Applied',
-        'Transaction Ref',
-        'Organizer Notes',
+        'Transaction Ref / TID',
+        'Notes',
       ];
       const data = await sql`
         SELECT registration_id, submitted_at, game_name, format, team_name,
                captain_name, captain_student_id, contact_phone, email, department,
-               institution, player_count, fee_due, verified_paid, balance, payment_method,
-               payment_status, registration_status, package_applied, transaction_ref, organizer_notes
+               institution, player_count, fee_due, payment_method,
+               package_applied, transaction_ref, organizer_notes
         FROM registrations ORDER BY id ASC
       `;
       rows = data as Record<string, unknown>[];
@@ -184,7 +142,6 @@ export async function GET(req: NextRequest) {
       headers.map(csvEscape).join(','),
       ...rows.map((row) => Object.values(row).map(csvEscape).join(',')),
     ];
-    // UTF-8 BOM so Microsoft Excel opens cleanly with zero garbled characters
     const csvContent = '\uFEFF' + csvLines.join('\r\n');
 
     return new NextResponse(csvContent, {

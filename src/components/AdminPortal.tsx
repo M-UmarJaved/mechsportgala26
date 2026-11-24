@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  AlertCircle,
   ArrowLeft,
   Banknote,
   BarChart3,
@@ -18,7 +17,6 @@ import {
   HelpCircle,
   KeyRound,
   Loader2,
-  Lock,
   LogOut,
   Plus,
   Printer,
@@ -32,7 +30,6 @@ import {
   Trash2,
   Users,
   X,
-  Zap,
 } from 'lucide-react';
 import { EventSettings, GameConfig, RegistrationRecord } from '@/lib/types';
 import { GalaAiChat } from './GalaAiChat';
@@ -43,19 +40,10 @@ interface DashboardData {
     totalPlayers: number;
     totalFeesDue: number;
     totalVerifiedPaid: number;
-    totalOutstanding: number;
-    pendingApproval: number;
-    approvedEntries: number;
-    waitlistedEntries: number;
-    playersVerified: number;
-    playersPending: number;
-    playersNotEligible: number;
     cashEntries: number;
     jazzcashEntries: number;
     cashVerified: number;
     jazzcashVerified: number;
-    cashPending: number;
-    jazzcashPending: number;
   };
   gameStats: Record<
     string,
@@ -64,9 +52,6 @@ interface DashboardData {
       players: number;
       feesDue: number;
       verifiedPaid: number;
-      outstanding: number;
-      approved: number;
-      pending: number;
     }
   >;
 }
@@ -77,7 +62,6 @@ interface ReceiptModalData {
   captain_student_id: string;
   game_name: string;
   fee_due: number;
-  payment_status: string;
   transaction_ref: string;
   receipt_data: string | null;
 }
@@ -91,11 +75,6 @@ export function AdminPortal() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
-  const [quickFilter, setQuickFilter] = useState<
-    'all' | 'needs_verification' | 'jazzcash_pending' | 'cash_pending' | 'paid'
-  >('all');
-  const [showGuide, setShowGuide] = useState(true);
-  const [rosterExportGame, setRosterExportGame] = useState('');
 
   const [activeTab, setActiveTab] = useState<AdminTab>('desk');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -106,17 +85,15 @@ export function AdminPortal() {
   const [searchQuery, setSearchQuery] = useState('');
   const [gameFilter, setGameFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
-  const [payStatusFilter, setPayStatusFilter] = useState('');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'jazzcash' | 'cash'>('all');
+  const [showGuide, setShowGuide] = useState(true);
+  const [rosterExportGame, setRosterExportGame] = useState('');
+
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
 
   const [receiptModal, setReceiptModal] = useState<ReceiptModalData | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
-
-  const [payModalReg, setPayModalReg] = useState<RegistrationRecord | null>(null);
-  const [manualAmount, setManualAmount] = useState('');
-  const [manualMethod, setManualMethod] = useState<'Cash' | 'JazzCash'>('Cash');
-  const [manualRef, setManualRef] = useState('');
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
@@ -130,7 +107,6 @@ export function AdminPortal() {
     teamName: '',
     paymentMethod: 'Cash' as 'Cash' | 'JazzCash',
     transactionRef: '',
-    markPaidAndApproved: true,
     notes: '',
   });
 
@@ -154,9 +130,7 @@ export function AdminPortal() {
 
   const loadDashboard = useCallback(async () => {
     const res = await fetch('/api/admin/dashboard');
-    if (res.ok) {
-      setDashboard(await res.json());
-    }
+    if (res.ok) setDashboard(await res.json());
   }, []);
 
   const loadRecords = useCallback(async () => {
@@ -166,7 +140,6 @@ export function AdminPortal() {
       if (searchQuery.trim()) params.set('q', searchQuery.trim());
       if (gameFilter) params.set('game', gameFilter);
       if (methodFilter) params.set('method', methodFilter);
-      if (payStatusFilter) params.set('paymentStatus', payStatusFilter);
 
       const res = await fetch(`/api/admin/registrations?${params.toString()}`);
       if (res.ok) {
@@ -176,7 +149,7 @@ export function AdminPortal() {
     } finally {
       setLoadingRecords(false);
     }
-  }, [searchQuery, gameFilter, methodFilter, payStatusFilter]);
+  }, [searchQuery, gameFilter, methodFilter]);
 
   const loadGamesAndSettings = useCallback(async () => {
     const [gRes, sRes] = await Promise.all([
@@ -220,13 +193,13 @@ export function AdminPortal() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setLoginError(data.message || 'Incorrect password');
+        setLoginError(data.message || 'Invalid secret key');
       } else {
         setAuthenticated(true);
         setPassword('');
       }
     } catch {
-      setLoginError('Network error while logging in');
+      setLoginError('Network error while unlocking');
     } finally {
       setLoggingIn(false);
     }
@@ -235,29 +208,6 @@ export function AdminPortal() {
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     setAuthenticated(false);
-  };
-
-  const handleQuickApprove = async (regId: string, name: string) => {
-    if (!confirm(`Verify payment and approve registration ${regId} for ${name}?`)) return;
-    setSavingAction(true);
-    try {
-      const res = await fetch('/api/admin/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registrationId: regId, verifiedBy: 'Organizer Desk' }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Approval failed');
-      }
-      showToast(`Verified & Approved ${regId}!`);
-      setReceiptModal(null);
-      await Promise.all([loadRecords(), loadDashboard()]);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Approval error');
-    } finally {
-      setSavingAction(false);
-    }
   };
 
   const openReceipt = async (regId: string) => {
@@ -273,70 +223,14 @@ export function AdminPortal() {
     }
   };
 
-  const handleStatusChange = async (regId: string, status: string) => {
-    const res = await fetch(`/api/admin/registrations/${encodeURIComponent(regId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ registrationStatus: status }),
-    });
-    if (res.ok) {
-      showToast(`${regId} marked ${status}`);
-      await Promise.all([loadRecords(), loadDashboard()]);
-    }
-  };
-
   const handleDeleteReg = async (regId: string) => {
-    if (!confirm(`Permanently delete registration ${regId} and all its players/payments?`)) return;
+    if (!confirm(`Permanently delete registration ${regId} and its players/payments?`)) return;
     const res = await fetch(`/api/admin/registrations/${encodeURIComponent(regId)}`, {
       method: 'DELETE',
     });
     if (res.ok) {
       showToast(`Deleted ${regId}`);
       await Promise.all([loadRecords(), loadDashboard()]);
-    }
-  };
-
-  const handlePlayerEligChange = async (playerId: number, status: string) => {
-    const res = await fetch(`/api/admin/players/${playerId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eligibilityStatus: status }),
-    });
-    if (res.ok) {
-      showToast(`Player eligibility updated to ${status}`);
-      await Promise.all([loadRecords(), loadDashboard()]);
-    }
-  };
-
-  const handleRecordManualPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!payModalReg) return;
-    setSavingAction(true);
-    try {
-      const res = await fetch('/api/admin/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          registrationId: payModalReg.registration_id,
-          amount: Number(manualAmount),
-          method: manualMethod,
-          reference: manualRef,
-          status: 'Verified',
-        }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Failed to record payment');
-      }
-      showToast(`Payment recorded for ${payModalReg.registration_id}`);
-      setPayModalReg(null);
-      setManualAmount('');
-      setManualRef('');
-      await Promise.all([loadRecords(), loadDashboard()]);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Payment error');
-    } finally {
-      setSavingAction(false);
     }
   };
 
@@ -347,13 +241,13 @@ export function AdminPortal() {
       const res = await fetch('/api/admin/registrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newEntry),
+        body: JSON.stringify({ ...newEntry, markPaidAndApproved: true }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to add entry');
       }
-      showToast(`Added ${data.registrationId} successfully!`);
+      showToast(`Added ${data.registrationId} (${newEntry.paymentMethod})!`);
       setAddModalOpen(false);
       setNewEntry({
         gameName: games[0]?.name || 'Cricket',
@@ -366,7 +260,6 @@ export function AdminPortal() {
         teamName: '',
         paymentMethod: 'Cash',
         transactionRef: '',
-        markPaidAndApproved: true,
         notes: '',
       });
       await Promise.all([loadRecords(), loadDashboard()]);
@@ -486,7 +379,7 @@ export function AdminPortal() {
   const kpis = dashboard?.kpis;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-screen bg-slate-50 pb-16 overflow-x-hidden">
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 bg-[#0A1226] text-amber-300 border border-amber-400/40 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold flex items-center gap-2">
@@ -496,14 +389,14 @@ export function AdminPortal() {
       )}
 
       {/* Header */}
-      <header className="bg-[radial-gradient(circle_at_10%_10%,#1A2B52_0%,#060B18_90%)] text-white px-4 sm:px-8 py-5 border-b-2 border-amber-400">
+      <header className="no-print bg-[radial-gradient(circle_at_10%_10%,#1A2B52_0%,#060B18_90%)] text-white px-4 sm:px-8 py-5 border-b-2 border-amber-400">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-xl sm:text-2xl font-bold">
               Mechanical Sports Gala — Organizer Desk
             </h1>
             <p className="text-xs sm:text-sm text-slate-300">
-              Neon DB Live Control · Cash &amp; JazzCash Verification · Groq AI Assistant
+              Live Registrations · Classroom Cash Entry · Online JazzCash Receipts · Reports &amp; Gala AI
             </p>
           </div>
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -515,7 +408,7 @@ export function AdminPortal() {
               }}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0A1226] text-xs sm:text-sm font-bold cursor-pointer transition"
             >
-              <Plus className="w-4 h-4" /> Add Entry
+              <Plus className="w-4 h-4" /> Add Cash Entry
             </button>
             <button
               type="button"
@@ -535,76 +428,61 @@ export function AdminPortal() {
               onClick={handleLogout}
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-200 text-xs sm:text-sm font-semibold cursor-pointer"
             >
-              <LogOut className="w-4 h-4" /> Logout
+              <LogOut className="w-4 h-4" /> Lock Desk
             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6">
-        {/* KPI Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+        {/* Clean 5-Card KPI Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
           <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-[#0A1226]">
-            <div className="text-[11px] font-bold uppercase text-slate-500">Entries</div>
+            <div className="text-[11px] font-bold uppercase text-slate-500">Total Entries</div>
             <div className="font-display text-2xl font-bold text-slate-900">
               {kpis?.totalEntries ?? 0}
             </div>
-            <div className="text-[11px] text-slate-500">
-              {kpis?.approvedEntries ?? 0} Appr · {kpis?.pendingApproval ?? 0} Pnd
-            </div>
+            <div className="text-[11px] text-slate-500">Confirmed registrations</div>
           </div>
 
           <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-blue-600">
-            <div className="text-[11px] font-bold uppercase text-slate-500">Athletes</div>
+            <div className="text-[11px] font-bold uppercase text-slate-500">Total Athletes</div>
             <div className="font-display text-2xl font-bold text-slate-900">
               {kpis?.totalPlayers ?? 0}
             </div>
-            <div className="text-[11px] text-slate-500">
-              {kpis?.playersVerified ?? 0} Ver · {kpis?.playersPending ?? 0} Pnd
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-amber-500">
-            <div className="text-[11px] font-bold uppercase text-slate-500">Total Due</div>
-            <div className="font-display text-xl font-bold text-slate-900">
-              {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
-            </div>
-            <div className="text-[11px] text-slate-500">All registrations</div>
+            <div className="text-[11px] text-slate-500">Across all 10 sports</div>
           </div>
 
           <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-emerald-500">
-            <div className="text-[11px] font-bold uppercase text-slate-500">
-              Verified Paid
-            </div>
+            <div className="text-[11px] font-bold uppercase text-slate-500">Total Collected</div>
             <div className="font-display text-xl font-bold text-emerald-700">
-              {(kpis?.totalVerifiedPaid ?? 0).toLocaleString()} PKR
+              {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
+            </div>
+            <div className="text-[11px] text-slate-500">Online + Classroom Cash</div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-amber-500">
+            <div className="text-[11px] font-bold uppercase text-slate-500">JazzCash Online</div>
+            <div className="font-display text-xl font-bold text-slate-900">
+              {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR
             </div>
             <div className="text-[11px] text-slate-500">
-              Cash: {(kpis?.cashVerified ?? 0).toLocaleString()} · JC:{' '}
-              {(kpis?.jazzcashVerified ?? 0).toLocaleString()}
+              {kpis?.jazzcashEntries ?? 0} entries ({settings?.jazzcash_number || '03281159050'})
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-red-500">
-            <div className="text-[11px] font-bold uppercase text-slate-500">Outstanding</div>
-            <div className="font-display text-xl font-bold text-red-600">
-              {(kpis?.totalOutstanding ?? 0).toLocaleString()} PKR
-            </div>
-            <div className="text-[11px] text-slate-500">Unverified balance</div>
-          </div>
-
-          <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-purple-500">
-            <div className="text-[11px] font-bold uppercase text-slate-500">Methods</div>
-            <div className="font-display text-lg font-bold text-slate-900 mt-0.5">
-              {kpis?.cashEntries ?? 0} Cash / {kpis?.jazzcashEntries ?? 0} JC
+          <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-purple-500 col-span-2 sm:col-span-1">
+            <div className="text-[11px] font-bold uppercase text-slate-500">Classroom Cash</div>
+            <div className="font-display text-xl font-bold text-slate-900">
+              {(kpis?.cashVerified ?? 0).toLocaleString()} PKR
             </div>
             <div className="text-[11px] text-slate-500">
-              JC: {settings?.jazzcash_number || '03281159050'}
+              {kpis?.cashEntries ?? 0} entries added by team
             </div>
           </div>
         </div>
 
-        {/* Collapsible 30-Second Team Guide */}
+        {/* Collapsible Quick Team Guide */}
         <div className="no-print bg-amber-50/80 border border-amber-200 rounded-2xl mb-5 overflow-hidden">
           <button
             type="button"
@@ -613,7 +491,7 @@ export function AdminPortal() {
           >
             <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-950">
               <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              Quick Organizer Team Guide — How to Manage Registrations &amp; Reports
+              Quick Organizer Team Guide — How Everything Works
             </span>
             {showGuide ? (
               <ChevronUp className="w-4 h-4 text-amber-700 shrink-0" />
@@ -624,24 +502,21 @@ export function AdminPortal() {
           {showGuide && (
             <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs text-slate-700">
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                <strong className="text-[#0A1226] block mb-0.5">1. Cash at Desk</strong>
-                Type student&apos;s Roll No in Search → Collect cash → Click green{' '}
-                <strong className="text-emerald-700">Approve</strong>. Status turns Verified instantly.
+                <strong className="text-[#0A1226] block mb-0.5">1. Online JazzCash Entries</strong>
+                Students registering online upload their JazzCash receipt. Click blue{' '}
+                <strong className="text-blue-700">Receipt</strong> on any row to view or download their screenshot anytime.
               </div>
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                <strong className="text-[#0A1226] block mb-0.5">2. JazzCash Online</strong>
-                Tap <strong>JazzCash Receipts Pending</strong> → Click blue{' '}
-                <strong className="text-blue-700">Receipt</strong> → Confirm transfer to{' '}
-                <span className="font-mono font-bold">{settings?.jazzcash_number || '03281159050'}</span> → Approve.
+                <strong className="text-[#0A1226] block mb-0.5">2. Classroom Cash Collection</strong>
+                When your team collects cash in classes, click yellow <strong>+ Add Cash Entry</strong> at top right to record the student directly as Paid.
               </div>
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                <strong className="text-[#0A1226] block mb-0.5">3. Walk-In Students</strong>
-                Click yellow <strong>+ Add Entry</strong> at top right to register &amp; mark someone Paid directly from the desk.
+                <strong className="text-[#0A1226] block mb-0.5">3. Reports &amp; Match Sheets</strong>
+                Open <strong>Reports &amp; Downloads</strong> to export Excel files (All Registrations, Per-Sport Rosters, Payments) or Print a PDF summary.
               </div>
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                <strong className="text-[#0A1226] block mb-0.5">4. Reports &amp; Gala AI</strong>
-                Open <strong>Reports &amp; Downloads</strong> for Excel/PDF reports, or open{' '}
-                <strong>Ask Gala AI</strong> to ask questions in English or Roman Urdu.
+                <strong className="text-[#0A1226] block mb-0.5">4. Ask Gala AI Anything</strong>
+                Open <strong>Ask Gala AI</strong> to ask questions like <em>&ldquo;How many Cricket teams registered?&rdquo;</em> or check any Roll Number.
               </div>
             </div>
           )}
@@ -650,7 +525,7 @@ export function AdminPortal() {
         {/* Navigation Tabs */}
         <div className="no-print grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5">
           {[
-            { id: 'desk', label: 'Desk Verification', icon: Search },
+            { id: 'desk', label: 'All Registrations', icon: Search },
             { id: 'metrics', label: 'Reports & Downloads', icon: BarChart3 },
             { id: 'ai', label: 'Ask Gala AI', icon: Sparkles },
             { id: 'settings', label: 'Games & Settings', icon: Sliders },
@@ -675,58 +550,34 @@ export function AdminPortal() {
           })}
         </div>
 
-        {/* TAB 1: DESK VERIFICATION & REGISTRATIONS */}
+        {/* TAB 1: ALL REGISTRATIONS & RECEIPTS */}
         {activeTab === 'desk' && (
           <div className="space-y-4">
-            {/* Search & Filters */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
-              {/* 1-Click Team Workflow Filter Pills */}
+              {/* Quick Method Pills */}
               <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-100">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1">
-                  Quick Views:
+                  Quick Filter:
                 </span>
                 {[
                   {
                     id: 'all',
-                    label: 'All Entries',
+                    label: 'All Registrations',
                     apply: () => {
                       setSearchQuery('');
                       setGameFilter('');
                       setMethodFilter('');
-                      setPayStatusFilter('');
                     },
                   },
                   {
-                    id: 'needs_verification',
-                    label: 'Needs Verification (Unpaid)',
-                    apply: () => {
-                      setMethodFilter('');
-                      setPayStatusFilter('Unpaid');
-                    },
+                    id: 'jazzcash',
+                    label: 'JazzCash (Online Receipts)',
+                    apply: () => setMethodFilter('JazzCash'),
                   },
                   {
-                    id: 'jazzcash_pending',
-                    label: 'JazzCash Receipts Pending',
-                    apply: () => {
-                      setMethodFilter('JazzCash');
-                      setPayStatusFilter('Unpaid');
-                    },
-                  },
-                  {
-                    id: 'cash_pending',
-                    label: 'Cash Desk Pending',
-                    apply: () => {
-                      setMethodFilter('Cash');
-                      setPayStatusFilter('Unpaid');
-                    },
-                  },
-                  {
-                    id: 'paid',
-                    label: 'Verified & Paid',
-                    apply: () => {
-                      setMethodFilter('');
-                      setPayStatusFilter('Paid');
-                    },
+                    id: 'cash',
+                    label: 'Cash (Classroom Entries)',
+                    apply: () => setMethodFilter('Cash'),
                   },
                 ].map((pill) => {
                   const active = quickFilter === pill.id;
@@ -757,7 +608,7 @@ export function AdminPortal() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Roll No (e.g. 2024-ME-104), Student Name, Team, Phone, or Reg ID..."
+                    placeholder="Search Roll No, Student Name, Team, Phone, Session, or Reg ID..."
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-[#0A1226]/25 focus:border-[#0A1226] focus:outline-none text-sm font-medium"
                   />
                 </div>
@@ -775,33 +626,6 @@ export function AdminPortal() {
                     ))}
                   </select>
 
-                  <select
-                    value={methodFilter}
-                    onChange={(e) => {
-                      setMethodFilter(e.target.value);
-                      setQuickFilter('all');
-                    }}
-                    className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
-                  >
-                    <option value="">All Methods</option>
-                    <option value="Cash">Cash</option>
-                    <option value="JazzCash">JazzCash</option>
-                  </select>
-
-                  <select
-                    value={payStatusFilter}
-                    onChange={(e) => {
-                      setPayStatusFilter(e.target.value);
-                      setQuickFilter('all');
-                    }}
-                    className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
-                  >
-                    <option value="">All Pay Status</option>
-                    <option value="Unpaid">Unpaid</option>
-                    <option value="Partial">Partial</option>
-                    <option value="Paid">Paid</option>
-                  </select>
-
                   <button
                     type="button"
                     onClick={() => {
@@ -817,7 +641,7 @@ export function AdminPortal() {
               </div>
             </div>
 
-            {/* Mobile Card View (< 1024px): Thumb-friendly zero-scroll desk verification */}
+            {/* Mobile Card View (< 1024px) */}
             <div className="lg:hidden space-y-3">
               {loadingRecords && records.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
@@ -829,7 +653,6 @@ export function AdminPortal() {
                 </div>
               ) : (
                 records.map((r) => {
-                  const isPaid = r.payment_status === 'Paid';
                   const isExpanded = expandedRegId === r.registration_id;
                   return (
                     <div
@@ -853,15 +676,13 @@ export function AdminPortal() {
                             {r.fee_due.toLocaleString()} PKR
                           </div>
                           <span
-                            className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              isPaid
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : r.payment_status === 'Partial'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-red-100 text-red-700'
+                            className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              r.payment_method === 'JazzCash'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             }`}
                           >
-                            {r.payment_method} · {r.payment_status}
+                            {r.payment_method} · Paid
                           </span>
                         </div>
                       </div>
@@ -874,111 +695,54 @@ export function AdminPortal() {
                           </span>
                         </div>
                         <div className="text-slate-500">
-                          {r.department} · {r.contact_phone}
+                          {r.department}
+                          {r.institution ? ` · ${r.institution}` : ''} · {r.contact_phone}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2">
-                        <select
-                          value={r.registration_status}
-                          onChange={(e) =>
-                            handleStatusChange(r.registration_id, e.target.value)
+                      <div className="flex items-center gap-2">
+                        {r.has_receipt && (
+                          <button
+                            type="button"
+                            onClick={() => openReceipt(r.registration_id)}
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
+                          >
+                            <FileImage className="w-3.5 h-3.5" /> View Receipt
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedRegId(isExpanded ? null : r.registration_id)
                           }
-                          className="flex-1 px-2.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white"
+                          className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          <option value="Pending Review">Pending Review</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Rejected">Rejected</option>
-                          <option value="Waitlisted">Waitlisted</option>
-                        </select>
+                          <Users className="w-3.5 h-3.5" />
+                          {isExpanded ? 'Hide Roster' : `Roster (${r.players?.length || r.player_count})`}
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteReg(r.registration_id)}
-                          className="p-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 cursor-pointer"
+                          className="p-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 cursor-pointer"
                           title="Delete registration"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        {!isPaid ? (
-                          <button
-                            type="button"
-                            disabled={savingAction}
-                            onClick={() =>
-                              handleQuickApprove(r.registration_id, r.captain_name)
-                            }
-                            className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                          >
-                            <Zap className="w-3.5 h-3.5" /> Verify &amp; Approve
-                          </button>
-                        ) : (
-                          <div className="inline-flex items-center justify-center gap-1 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Verified Paid
-                          </div>
-                        )}
-
-                        {r.has_receipt ? (
-                          <button
-                            type="button"
-                            onClick={() => openReceipt(r.registration_id)}
-                            className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold cursor-pointer"
-                          >
-                            <FileImage className="w-3.5 h-3.5" /> View Receipt
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayModalReg(r);
-                              setManualAmount(String(r.balance || r.fee_due));
-                              setManualMethod(r.payment_method);
-                            }}
-                            className="inline-flex items-center justify-center gap-1 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-bold cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Record Pay
-                          </button>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedRegId(isExpanded ? null : r.registration_id)
-                        }
-                        className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        {isExpanded ? 'Hide Roster' : `View Roster (${r.players?.length || r.player_count})`}
-                      </button>
-
                       {isExpanded && (
                         <div className="space-y-2 pt-2 border-t border-slate-100">
                           {(r.players || []).map((p) => (
                             <div
                               key={p.id}
-                              className="flex items-center justify-between gap-2 bg-slate-50 rounded-lg p-2.5 text-xs"
+                              className="bg-slate-50 rounded-lg p-2.5 text-xs"
                             >
-                              <div className="min-w-0">
-                                <div className="font-bold text-slate-900 truncate">
-                                  #{p.player_no} {p.full_name}
-                                </div>
-                                <div className="font-mono text-[11px] text-slate-600">
-                                  {p.student_id} · {p.department}
-                                </div>
+                              <div className="font-bold text-slate-900">
+                                #{p.player_no} {p.full_name}
                               </div>
-                              <select
-                                value={p.eligibility_status}
-                                onChange={(e) =>
-                                  handlePlayerEligChange(p.id, e.target.value)
-                                }
-                                className="px-2 py-1 rounded border border-slate-300 bg-white text-[11px] font-semibold shrink-0"
-                              >
-                                <option value="Pending">Pending</option>
-                                <option value="Verified">Verified</option>
-                                <option value="Not Eligible">Not Eligible</option>
-                              </select>
+                              <div className="font-mono text-[11px] text-slate-600">
+                                {p.student_id} · {p.department} {p.phone ? `· ${p.phone}` : ''}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -989,138 +753,86 @@ export function AdminPortal() {
               )}
             </div>
 
-            {/* Desktop Records Table (>= 1024px, Zero-Overflow 6-Column Layout) */}
+            {/* Desktop Clean 5-Column Table (>= 1024px) */}
             <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase border-b border-slate-200">
-                      <th className="py-3 px-3">Reg ID</th>
-                      <th className="py-3 px-3">Sport &amp; Team</th>
-                      <th className="py-3 px-3">Student / Roll No</th>
-                      <th className="py-3 px-3">Payment &amp; Fee</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3">Desk Actions</th>
+                      <th className="py-3 px-4">Reg ID</th>
+                      <th className="py-3 px-4">Sport &amp; Team</th>
+                      <th className="py-3 px-4">Student / Roll No / Session</th>
+                      <th className="py-3 px-4">Fee Paid &amp; Method</th>
+                      <th className="py-3 px-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loadingRecords && records.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-slate-500">
+                        <td colSpan={5} className="py-10 text-center text-slate-500">
                           Loading registrations from Neon DB...
                         </td>
                       </tr>
                     ) : records.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-10 text-center text-slate-500">
+                        <td colSpan={5} className="py-10 text-center text-slate-500">
                           No registrations found matching your search.
                         </td>
                       </tr>
                     ) : (
                       records.map((r) => {
-                        const isPaid = r.payment_status === 'Paid';
                         const isExpanded = expandedRegId === r.registration_id;
                         return (
                           <React.Fragment key={r.registration_id}>
                             <tr className="border-b border-slate-200 hover:bg-slate-50/70">
-                              <td className="py-3 px-3 font-mono font-bold text-xs text-[#0A1226] whitespace-nowrap">
+                              <td className="py-3 px-4 font-mono font-bold text-xs text-[#0A1226] whitespace-nowrap">
                                 {r.registration_id}
                                 <div className="text-[10px] font-sans font-normal text-slate-400">
                                   {new Date(r.submitted_at).toLocaleDateString()}
                                 </div>
                               </td>
-                              <td className="py-3 px-3">
-                                <div className="font-bold text-slate-900 leading-tight">
-                                  {r.game_name}
-                                </div>
-                                <div className="text-[11px] text-slate-500">
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-900">{r.game_name}</div>
+                                <div className="text-xs text-slate-500">
                                   {r.team_name} ({r.format})
                                 </div>
                               </td>
-                              <td className="py-3 px-3">
-                                <div className="font-bold text-slate-900 leading-tight">
-                                  {r.captain_name}
-                                </div>
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-900">{r.captain_name}</div>
                                 <div className="font-mono text-xs font-bold text-[#0A1226]">
                                   {r.captain_student_id}
                                 </div>
-                                <div className="text-[11px] text-slate-500">
-                                  {r.department} · {r.contact_phone}
+                                <div className="text-xs text-slate-500">
+                                  {r.department}
+                                  {r.institution ? ` · ${r.institution}` : ''} · {r.contact_phone}
                                 </div>
                               </td>
-                              <td className="py-3 px-3 whitespace-nowrap">
-                                <div className="font-bold text-slate-900 text-xs sm:text-sm">
-                                  {r.fee_due.toLocaleString()} PKR{' '}
-                                  <span className="text-[11px] font-semibold text-emerald-700">
-                                    (Paid {r.verified_paid.toLocaleString()})
-                                  </span>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <div className="font-bold text-slate-900">
+                                  {r.fee_due.toLocaleString()} PKR
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                      r.payment_method === 'JazzCash'
-                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    }`}
-                                  >
-                                    {r.payment_method === 'JazzCash' ? (
-                                      <Smartphone className="w-2.5 h-2.5" />
-                                    ) : (
-                                      <Banknote className="w-2.5 h-2.5" />
-                                    )}
-                                    {r.payment_method}
-                                  </span>
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                      isPaid
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : r.payment_status === 'Partial'
-                                        ? 'bg-amber-100 text-amber-800'
-                                        : 'bg-red-100 text-red-700'
-                                    }`}
-                                  >
-                                    {r.payment_status}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-3">
-                                <select
-                                  value={r.registration_status}
-                                  onChange={(e) =>
-                                    handleStatusChange(r.registration_id, e.target.value)
-                                  }
-                                  className="px-2 py-1 rounded-lg border border-slate-300 text-xs font-semibold bg-white"
+                                <span
+                                  className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[11px] font-bold ${
+                                    r.payment_method === 'JazzCash'
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  }`}
                                 >
-                                  <option value="Pending Review">Pending Review</option>
-                                  <option value="Approved">Approved</option>
-                                  <option value="Rejected">Rejected</option>
-                                  <option value="Waitlisted">Waitlisted</option>
-                                </select>
-                              </td>
-                              <td className="py-3 px-3">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  {!isPaid ? (
-                                    <button
-                                      type="button"
-                                      disabled={savingAction}
-                                      onClick={() =>
-                                        handleQuickApprove(r.registration_id, r.captain_name)
-                                      }
-                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
-                                    >
-                                      <Zap className="w-3.5 h-3.5" /> Approve
-                                    </button>
+                                  {r.payment_method === 'JazzCash' ? (
+                                    <Smartphone className="w-3 h-3" />
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 px-1.5 py-1">
-                                      <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                                    </span>
+                                    <Banknote className="w-3 h-3" />
                                   )}
-
+                                  {r.payment_method} · Paid
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   {r.has_receipt && (
                                     <button
                                       type="button"
                                       onClick={() => openReceipt(r.registration_id)}
-                                      className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
                                     >
                                       <FileImage className="w-3.5 h-3.5" /> Receipt
                                     </button>
@@ -1128,25 +840,12 @@ export function AdminPortal() {
 
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setPayModalReg(r);
-                                      setManualAmount(String(r.balance || r.fee_due));
-                                      setManualMethod(r.payment_method);
-                                    }}
-                                    className="inline-flex items-center gap-0.5 px-2 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer"
-                                    title="Record manual or partial payment"
-                                  >
-                                    <Plus className="w-3 h-3" /> Pay
-                                  </button>
-
-                                  <button
-                                    type="button"
                                     onClick={() =>
                                       setExpandedRegId(isExpanded ? null : r.registration_id)
                                     }
-                                    className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer"
                                   >
-                                    <Users className="w-3.5 h-3.5" /> (
+                                    <Users className="w-3.5 h-3.5" /> Roster (
                                     {r.players?.length || r.player_count})
                                   </button>
 
@@ -1156,18 +855,17 @@ export function AdminPortal() {
                                     className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
                                     title="Delete registration"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
                             </tr>
 
-                            {/* Expandable Player Roster */}
                             {isExpanded && (
                               <tr className="bg-slate-50 border-b border-slate-200">
-                                <td colSpan={6} className="p-4">
+                                <td colSpan={5} className="p-4">
                                   <div className="text-xs font-bold uppercase text-slate-500 mb-2">
-                                    Player Roster &amp; Eligibility — {r.registration_id}
+                                    Player Roster — {r.registration_id}
                                   </div>
                                   <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
                                     <table className="w-full text-left text-xs">
@@ -1178,7 +876,7 @@ export function AdminPortal() {
                                           <th className="py-2 px-3">Roll No / Student ID</th>
                                           <th className="py-2 px-3">Session</th>
                                           <th className="py-2 px-3">Phone</th>
-                                          <th className="py-2 px-3">Eligibility</th>
+                                          <th className="py-2 px-3">Email</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1193,19 +891,7 @@ export function AdminPortal() {
                                             </td>
                                             <td className="py-2 px-3">{p.department}</td>
                                             <td className="py-2 px-3">{p.phone || '-'}</td>
-                                            <td className="py-2 px-3">
-                                              <select
-                                                value={p.eligibility_status}
-                                                onChange={(e) =>
-                                                  handlePlayerEligChange(p.id, e.target.value)
-                                                }
-                                                className="px-2 py-1 rounded border border-slate-300 bg-white text-xs font-semibold"
-                                              >
-                                                <option value="Pending">Pending</option>
-                                                <option value="Verified">Verified</option>
-                                                <option value="Not Eligible">Not Eligible</option>
-                                              </select>
-                                            </td>
+                                            <td className="py-2 px-3">{p.email || '-'}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -1228,14 +914,13 @@ export function AdminPortal() {
         {/* TAB 2: REPORTS & DOWNLOADS CENTER */}
         {activeTab === 'metrics' && (
           <div className="space-y-5">
-            {/* Reports Header & Print PDF */}
             <div className="no-print bg-white rounded-2xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="font-display font-bold text-lg text-slate-900">
                   Official Reports &amp; Excel Downloads
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Every report below pulls live data from your Neon database. Click any button to download an Excel-ready CSV file or print a PDF summary.
+                  Download ready-to-open Excel spreadsheets for registrations, per-sport match sheets, or Cash/JazzCash collections — or print a PDF summary.
                 </p>
               </div>
               <button
@@ -1247,8 +932,8 @@ export function AdminPortal() {
               </button>
             </div>
 
-            {/* 5 Downloadable Report Cards */}
-            <div className="no-print grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* 4 Clean Report Cards */}
+            <div className="no-print grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Report 1: Master Registrations */}
               <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
                 <div>
@@ -1264,7 +949,7 @@ export function AdminPortal() {
                     1. Master Registrations Report
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Every team &amp; individual entry with Registration ID, fees due, verified paid, balance, payment method, and status.
+                    Every team &amp; individual entry with Registration ID, Session, Section, Email, Fee Paid, Method (JazzCash/Cash), and TID.
                   </p>
                 </div>
                 <a
@@ -1290,7 +975,7 @@ export function AdminPortal() {
                     2. Athlete Rosters &amp; Match Sheets
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 mb-3">
-                    Full list of players with Roll Numbers, Departments &amp; Eligibility. Pick a specific sport or export all 10 sports.
+                    Full list of players with Roll Numbers, Sessions &amp; Contact details. Pick a specific sport or export all 10 sports.
                   </p>
                   <select
                     value={rosterExportGame}
@@ -1326,14 +1011,14 @@ export function AdminPortal() {
                       <Banknote className="w-5 h-5" />
                     </span>
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                      {(kpis?.totalVerifiedPaid ?? 0).toLocaleString()} PKR
+                      {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-base">
                     3. Payments &amp; Cash/JazzCash Ledger
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Complete financial audit log of every Cash &amp; JazzCash payment, TID reference, verification status, and timestamps.
+                    Complete financial log of every JazzCash online payment and classroom Cash entry with TID references and timestamps.
                   </p>
                 </div>
                 <a
@@ -1344,34 +1029,8 @@ export function AdminPortal() {
                 </a>
               </div>
 
-              {/* Report 4: Unpaid / Pending Dues Follow-Up */}
+              {/* Report 4: Sport-by-Sport Summary */}
               <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center">
-                      <AlertCircle className="w-5 h-5" />
-                    </span>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-700">
-                      {(kpis?.totalOutstanding ?? 0).toLocaleString()} PKR Due
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base">
-                    4. Unpaid / Pending Dues List
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Only students &amp; teams with remaining unpaid balances, including their phone numbers for quick desk follow-up.
-                  </p>
-                </div>
-                <a
-                  href="/api/admin/export?type=unpaid"
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
-                >
-                  <Download className="w-4 h-4" /> Download Unpaid List (CSV)
-                </a>
-              </div>
-
-              {/* Report 5: Sport-by-Sport Summary */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col justify-between gap-4 shadow-xs md:col-span-2">
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center">
@@ -1382,43 +1041,41 @@ export function AdminPortal() {
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    5. Sport-by-Sport Executive Summary
+                    4. Sport-by-Sport Executive Summary
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Clean 10-row summary of entries, athletes, total fees, verified collections, and remaining balances per sport — ideal for department heads.
+                    Clean 10-row summary of entries, athletes, and total revenue collected per sport — ideal for department heads.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <a
                     href="/api/admin/export?type=summary"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold"
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold"
                   >
-                    <Download className="w-4 h-4" /> Download Summary CSV
+                    <Download className="w-4 h-4" /> Summary CSV
                   </a>
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
                   >
-                    <Printer className="w-4 h-4" /> Print / Save as PDF
+                    <Printer className="w-4 h-4" /> Print PDF
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Live Printable Sport-by-Sport Table */}
+            {/* Clean 4-Column Live Sport-by-Sport Table */}
             <div className="print-slip bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                <div>
-                  <h3 className="font-display font-bold text-base text-slate-900">
-                    Live Sport-by-Sport Reconciliation Report
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Cash Verified: {(kpis?.cashVerified ?? 0).toLocaleString()} PKR · JazzCash Verified:{' '}
-                    {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR · Total Verified:{' '}
-                    {(kpis?.totalVerifiedPaid ?? 0).toLocaleString()} PKR
-                  </p>
-                </div>
+              <div className="px-5 py-4 border-b border-slate-200">
+                <h3 className="font-display font-bold text-base text-slate-900">
+                  Live Sport-by-Sport Summary Report
+                </h3>
+                <p className="text-xs text-slate-500">
+                  JazzCash Online: {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR · Classroom Cash:{' '}
+                  {(kpis?.cashVerified ?? 0).toLocaleString()} PKR · Total Collected:{' '}
+                  {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
+                </p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs sm:text-sm">
@@ -1427,10 +1084,7 @@ export function AdminPortal() {
                       <th className="py-3 px-4">Sport</th>
                       <th className="py-3 px-4">Entries</th>
                       <th className="py-3 px-4">Athletes</th>
-                      <th className="py-3 px-4">Fees Due</th>
-                      <th className="py-3 px-4">Verified Paid</th>
-                      <th className="py-3 px-4">Balance</th>
-                      <th className="py-3 px-4">Approved / Pending</th>
+                      <th className="py-3 px-4 text-right">Total Collected</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1440,26 +1094,8 @@ export function AdminPortal() {
                           <td className="py-3 px-4 font-bold text-slate-900">{gameName}</td>
                           <td className="py-3 px-4">{s.entries}</td>
                           <td className="py-3 px-4">{s.players}</td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3 px-4 text-right text-emerald-700 font-bold whitespace-nowrap">
                             {s.feesDue.toLocaleString()} PKR
-                          </td>
-                          <td className="py-3 px-4 text-emerald-700 font-semibold whitespace-nowrap">
-                            {s.verifiedPaid.toLocaleString()} PKR
-                          </td>
-                          <td
-                            className={`py-3 px-4 font-bold whitespace-nowrap ${
-                              s.outstanding > 0 ? 'text-red-600' : 'text-emerald-700'
-                            }`}
-                          >
-                            {s.outstanding.toLocaleString()} PKR
-                          </td>
-                          <td className="py-3 px-4 text-xs whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold mr-1">
-                              {s.approved} Appr
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">
-                              {s.pending} Pnd
-                            </span>
                           </td>
                         </tr>
                       ))}
@@ -1476,7 +1112,6 @@ export function AdminPortal() {
         {/* TAB 4: GAMES & EVENT SETTINGS */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
-            {/* Event Settings Form */}
             {settings && (
               <form
                 onSubmit={handleSaveSettings}
@@ -1576,14 +1211,13 @@ export function AdminPortal() {
               </form>
             )}
 
-            {/* Game Setup Editor */}
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
               <div className="px-5 py-4 border-b border-slate-200">
                 <h2 className="font-display font-bold text-lg text-slate-900">
                   Game Setup &amp; Fees (All 10 Sports)
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Changes apply immediately to the live registration portal.
+                  Changes apply immediately to the live student registration website.
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -1682,20 +1316,20 @@ export function AdminPortal() {
         )}
       </main>
 
-      {/* RECEIPT VIEWER MODAL */}
+      {/* RECEIPT VIEWER MODAL (with Download button) */}
       {(receiptModal || loadingReceipt) && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl">
             {loadingReceipt || !receiptModal ? (
               <div className="py-12 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin" /> Loading receipt...
+                <Loader2 className="w-5 h-5 animate-spin" /> Loading receipt from Neon DB...
               </div>
             ) : (
               <>
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-display font-bold text-lg text-slate-900">
-                      JazzCash Receipt Verification
+                      JazzCash Payment Receipt
                     </h3>
                     <p className="text-xs text-slate-500">
                       {receiptModal.registration_id} · {receiptModal.captain_name} (
@@ -1712,8 +1346,8 @@ export function AdminPortal() {
                 </div>
 
                 <div className="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3.5 py-2 mb-3 font-semibold">
-                  Official JazzCash: {settings?.jazzcash_number || '03281159050'} (
-                  {settings?.jazzcash_title || 'Abdul Ahad'}) · Fee:{' '}
+                  JazzCash: {settings?.jazzcash_number || '03281159050'} (
+                  {settings?.jazzcash_title || 'Abdul Ahad'}) · Paid:{' '}
                   {receiptModal.fee_due.toLocaleString()} PKR
                   {receiptModal.transaction_ref ? ` · TID: ${receiptModal.transaction_ref}` : ''}
                 </div>
@@ -1723,15 +1357,24 @@ export function AdminPortal() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={receiptModal.receipt_data}
-                      alt="Uploaded payment receipt"
+                      alt="Uploaded JazzCash receipt"
                       className="max-w-full mx-auto rounded-lg shadow-xs"
                     />
                   ) : (
-                    <p className="py-8 text-sm text-slate-500">No image attached.</p>
+                    <p className="py-8 text-sm text-slate-500">No receipt image attached.</p>
                   )}
                 </div>
 
                 <div className="flex justify-end gap-2">
+                  {receiptModal.receipt_data && (
+                    <a
+                      href={receiptModal.receipt_data}
+                      download={`receipt-${receiptModal.registration_id}.jpg`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0A1226] text-amber-300 text-xs font-bold"
+                    >
+                      <Download className="w-4 h-4" /> Download Image
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={() => setReceiptModal(null)}
@@ -1739,21 +1382,6 @@ export function AdminPortal() {
                   >
                     Close
                   </button>
-                  {receiptModal.payment_status !== 'Paid' && (
-                    <button
-                      type="button"
-                      disabled={savingAction}
-                      onClick={() =>
-                        handleQuickApprove(
-                          receiptModal.registration_id,
-                          receiptModal.captain_name
-                        )
-                      }
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-4 h-4" /> Approve This Payment
-                    </button>
-                  )}
                 </div>
               </>
             )}
@@ -1761,92 +1389,7 @@ export function AdminPortal() {
         </div>
       )}
 
-      {/* MANUAL PAYMENT MODAL */}
-      {payModalReg && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <form
-            onSubmit={handleRecordManualPayment}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-display font-bold text-lg text-slate-900">
-                  Record Verified Payment
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {payModalReg.registration_id} · {payModalReg.captain_name} (Balance:{' '}
-                  {payModalReg.balance.toLocaleString()} PKR)
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPayModalReg(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Amount Received (PKR)
-              </label>
-              <input
-                type="number"
-                required
-                min={1}
-                value={manualAmount}
-                onChange={(e) => setManualAmount(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">Method</label>
-              <select
-                value={manualMethod}
-                onChange={(e) => setManualMethod(e.target.value as 'Cash' | 'JazzCash')}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
-              >
-                <option value="Cash">Cash</option>
-                <option value="JazzCash">JazzCash</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">
-                Receipt / Reference Note
-              </label>
-              <input
-                type="text"
-                value={manualRef}
-                onChange={(e) => setManualRef(e.target.value)}
-                placeholder="e.g. Desk Cash Copy #14 or TID"
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setPayModalReg(null)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={savingAction}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
-              >
-                Save Verified Payment
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ADD WALK-IN ENTRY MODAL */}
+      {/* ADD CLASSROOM CASH / MANUAL ENTRY MODAL */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <form
@@ -1856,10 +1399,10 @@ export function AdminPortal() {
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-display font-bold text-lg text-slate-900">
-                  Add New Registration Entry
+                  Add Classroom Cash / Manual Entry
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Register a walk-in student or team directly from the Organizer Desk.
+                  Enter a student collected in class — automatically recorded as Paid &amp; Confirmed.
                 </p>
               </div>
               <button
@@ -1999,22 +1542,11 @@ export function AdminPortal() {
                   }
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
                 >
-                  <option value="Cash">Cash</option>
+                  <option value="Cash">Cash (Classroom Collection)</option>
                   <option value="JazzCash">JazzCash</option>
                 </select>
               </div>
             </div>
-
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={newEntry.markPaidAndApproved}
-                onChange={(e) =>
-                  setNewEntry({ ...newEntry, markPaidAndApproved: e.target.checked })
-                }
-              />
-              Mark Payment as Verified &amp; Registration Approved immediately
-            </label>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -2029,7 +1561,7 @@ export function AdminPortal() {
                 disabled={savingAction}
                 className="px-4 py-2 rounded-xl bg-[#0A1226] hover:bg-[#152244] text-amber-300 text-xs font-bold cursor-pointer"
               >
-                {savingAction ? 'Saving...' : 'Save Registration Entry'}
+                {savingAction ? 'Saving...' : 'Save Paid Registration'}
               </button>
             </div>
           </form>
