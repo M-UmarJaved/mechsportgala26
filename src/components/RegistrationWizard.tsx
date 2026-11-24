@@ -91,7 +91,7 @@ export function RegistrationWizard() {
   const [feeSummary, setFeeSummary] = useState<FeeCalculationResult | null>(null);
   const [calculatingFee, setCalculatingFee] = useState<boolean>(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'JazzCash'>('Cash');
+  const [paymentMethod] = useState<'JazzCash'>('JazzCash');
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [receiptData, setReceiptData] = useState<string | null>(null);
   const [receiptName, setReceiptName] = useState<string>('');
@@ -284,11 +284,17 @@ export function RegistrationWizard() {
       !registrant.name.trim() ||
       !registrant.studentId.trim() ||
       !registrant.department.trim() ||
-      !registrant.phone.trim()
+      !registrant.phone.trim() ||
+      !registrant.email?.trim() ||
+      !registrant.institution?.trim()
     ) {
       setErrorMsg(
-        'Please complete all required fields: Full Name, Roll No / Student ID, Department / Class, and Phone Number.'
+        'Please complete all required fields: Full Name, Roll No / Student ID, Session, Phone Number, Email Address, and Section.'
       );
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registrant.email.trim())) {
+      setErrorMsg('Please enter a valid Email Address.');
       return false;
     }
     setErrorMsg('');
@@ -323,7 +329,7 @@ export function RegistrationWizard() {
         const p = entry.players[i];
         if (!p.name.trim() || !p.studentId.trim() || !p.department.trim()) {
           setErrorMsg(
-            `Please fill Full Name, Roll No / Student ID, and Department for Player #${i + 1} in ${gameName}.`
+            `Please fill Full Name, Roll No / Student ID, and Session for Player #${i + 1} in ${gameName}.`
           );
           return false;
         }
@@ -472,7 +478,7 @@ export function RegistrationWizard() {
     const r = submissionResult;
     let text = `🏆 ${settings.event_title.toUpperCase()} — REGISTRATION SLIP 🏆\n`;
     text += `Student: ${r.registrant.name} (Roll No: ${r.registrant.studentId})\n`;
-    text += `Department: ${r.registrant.department}\n`;
+    text += `Session: ${r.registrant.department}${r.registrant.institution ? ` · Section: ${r.registrant.institution}` : ''}\n`;
     text += `Payment: ${r.paymentMethod === 'JazzCash' ? 'JazzCash' : 'Cash at Registration Desk'}\n`;
     text += `Total Fee: ${r.totalFeeDue.toLocaleString()} ${r.currency}\n\n`;
     text += `REGISTERED SPORTS:\n`;
@@ -490,7 +496,6 @@ export function RegistrationWizard() {
     setSelectedGames({});
     setUsePackage(false);
     setFeeSummary(null);
-    setPaymentMethod('Cash');
     setTransactionRef('');
     clearReceipt();
     setSubmissionResult(null);
@@ -507,45 +512,23 @@ export function RegistrationWizard() {
         step === 3 && selectedCount > 0 ? 'pb-28 sm:pb-24' : 'pb-14'
       }`}
     >
-      {/* Top Hero Header */}
-      <header className="no-print relative overflow-hidden bg-[radial-gradient(ellipse_at_top,#1B3163_0%,#0A1226_55%,#050814_100%)] text-white px-4 pt-8 pb-14 sm:pt-14 sm:pb-20 border-b border-amber-400/30">
-        {/* Subtle decorative grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, #FDE68A 1px, transparent 0)',
-            backgroundSize: '26px 26px',
-          }}
-        />
-
+      {/* Top Hero Header — Minimal & Crisp */}
+      <header className="no-print relative overflow-hidden bg-[radial-gradient(ellipse_at_top,#1B3163_0%,#0A1226_55%,#050814_100%)] text-white px-4 pt-8 pb-14 sm:pt-12 sm:pb-16 border-b border-amber-400/30">
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 text-xs font-bold mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Registrations Open · {settings.registration_deadline}</span>
-          </div>
-
-          <div className="flex items-center justify-center gap-2 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase text-amber-300/90 mb-2">
+          <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase text-amber-300/90 mb-2">
             <Award className="w-4 h-4" />
             <span>Department of Mechanical Engineering</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">
             {settings.event_title}
           </h1>
-          <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mb-6 leading-relaxed">
-            Official online registration portal for team, pair, and individual championships. Instant official PDF proof slip upon submission.
-          </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs sm:text-sm">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-slate-100 backdrop-blur-xs">
-              <MapPin className="w-3.5 h-3.5 text-amber-300" />
-              {settings.venue}
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Deadline: {settings.registration_deadline}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-200 font-semibold backdrop-blur-xs">
-              <Sparkles className="w-3.5 h-3.5" />
-              Solo Pass: {settings.package_fee.toLocaleString()} {settings.currency}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-slate-100 backdrop-blur-xs">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-slate-200">
               <GraduationCap className="w-3.5 h-3.5 text-amber-300" />
               Enrolled Students Only
             </span>
@@ -650,16 +633,16 @@ export function RegistrationWizard() {
         {/* STEP 1: WELCOME & RULES */}
         {step === 1 && (
           <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8">
-            <div className="flex items-start gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#0A1226] text-amber-300 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-[#0A1226] text-amber-300 flex items-center justify-center shrink-0">
                 <Trophy className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900">
-                  Official Guidelines & Fee Schedule
+                  Games &amp; Registration Fees
                 </h2>
-                <p className="text-sm text-slate-500">
-                  Review competition formats, squad limits, and payment rules before registering.
+                <p className="text-xs sm:text-sm text-slate-500">
+                  Select one or multiple sports, fill player details, and complete your registration online.
                 </p>
               </div>
             </div>
@@ -716,32 +699,42 @@ export function RegistrationWizard() {
               </div>
             </div>
 
-            <div className="rounded-xl bg-[#0A1226] text-slate-200 p-4 sm:p-5 mb-6 text-sm space-y-2">
-              <div className="flex items-start gap-2.5">
+            <div className="rounded-xl bg-[#0A1226] text-slate-200 p-4 mb-4 text-xs sm:text-sm space-y-2">
+              <div className="flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Eligibility:</strong> Currently enrolled students only. Roll No / Student ID and Department / Class are mandatory for every player.
+                  <strong className="text-white">Required:</strong> Roll No, Session, Section &amp; Email for registration.
                 </span>
               </div>
-              <div className="flex items-start gap-2.5">
+              <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Individual All-Access Pass:</strong> Pay a single flat fee of{' '}
-                  <strong className="text-amber-300">
-                    {settings.package_fee.toLocaleString()} {settings.currency}
-                  </strong>{' '}
-                  for all eligible solo competitions. Team & pair games are billed separately.
+                  <strong className="text-white">Solo Pass ({settings.package_fee.toLocaleString()} {settings.currency}):</strong> Covers all 5 individual games (team &amp; pair games are billed separately).
                 </span>
               </div>
-              <div className="flex items-start gap-2.5">
-                <Smartphone className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-white">Payments:</strong> Cash at the Registration Desk OR{' '}
-                  <strong className="text-amber-300">
-                    JazzCash to {settings.jazzcash_number} ({settings.jazzcash_title})
-                  </strong>{' '}
-                  with receipt screenshot upload.
-                </span>
+            </div>
+
+            {/* Support / Contact Numbers */}
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-6">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-amber-600" />
+                For Any Query or Support, Contact:
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
+                <a
+                  href="tel:03281841771"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-[#0A1226] transition"
+                >
+                  <span className="font-bold text-slate-900">Sharjeel Bilal</span>
+                  <span className="font-mono font-bold text-[#0A1226]">03281841771</span>
+                </a>
+                <a
+                  href="tel:03281159050"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-[#0A1226] transition"
+                >
+                  <span className="font-bold text-slate-900">Abdul Ahad</span>
+                  <span className="font-mono font-bold text-[#0A1226]">03281159050</span>
+                </a>
               </div>
             </div>
 
@@ -810,7 +803,7 @@ export function RegistrationWizard() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">
-                  Department / Class <span className="text-red-500">*</span>
+                  Session <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <GraduationCap className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -818,7 +811,7 @@ export function RegistrationWizard() {
                     type="text"
                     value={registrant.department}
                     onChange={(e) => setRegistrant({ ...registrant, department: e.target.value })}
-                    placeholder="e.g. Mechanical Engineering - 6th Sem"
+                    placeholder="e.g. 2023–2027 or 2024–2028"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-[#0A1226] focus:outline-none text-sm"
                   />
                 </div>
@@ -842,12 +835,13 @@ export function RegistrationWizard() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">
-                  Email Address (Optional)
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
+                    required
                     value={registrant.email || ''}
                     onChange={(e) => setRegistrant({ ...registrant, email: e.target.value })}
                     placeholder="student@university.edu.pk"
@@ -858,17 +852,18 @@ export function RegistrationWizard() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">
-                  Campus / Club (Optional)
+                  Section <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
+                    required
                     value={registrant.institution || ''}
                     onChange={(e) =>
                       setRegistrant({ ...registrant, institution: e.target.value })
                     }
-                    placeholder="Main Campus"
+                    placeholder="e.g. Section A"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-[#0A1226] focus:outline-none text-sm"
                   />
                 </div>
@@ -1084,7 +1079,7 @@ export function RegistrationWizard() {
                     Team &amp; Athlete Rosters
                   </h2>
                   <p className="text-sm text-slate-500">
-                    Every player must provide Full Name, Roll No / Student ID, and Department / Class.
+                    Every player must provide Full Name, Roll No / Student ID, and Session.
                   </p>
                 </div>
               </div>
@@ -1196,7 +1191,7 @@ export function RegistrationWizard() {
                               />
                               <input
                                 type="text"
-                                placeholder="Department / Class *"
+                                placeholder="Session *"
                                 value={player.department}
                                 onChange={(e) =>
                                   updatePlayer(gameName, pIdx, 'department', e.target.value)
@@ -1263,10 +1258,10 @@ export function RegistrationWizard() {
               </div>
               <div>
                 <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900">
-                  Summary &amp; Payment Method
+                  Summary &amp; Online JazzCash Payment
                 </h2>
                 <p className="text-sm text-slate-500">
-                  All fees are verified live on the server. Choose Cash or JazzCash to complete registration.
+                  Transfer the verified total to the official JazzCash account below and upload your receipt screenshot to complete registration.
                 </p>
               </div>
             </div>
@@ -1342,67 +1337,8 @@ export function RegistrationWizard() {
               )}
             </div>
 
-            {/* Payment Method Cards */}
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              Select Payment Method
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod('Cash');
-                  setErrorMsg('');
-                }}
-                className={`touch-manipulation text-left p-4 rounded-2xl border-2 transition cursor-pointer ${
-                  paymentMethod === 'Cash'
-                    ? 'border-[#0A1226] bg-emerald-50/50 ring-2 ring-emerald-400/30'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="inline-flex items-center gap-2 font-bold text-slate-900">
-                    <Banknote className="w-5 h-5 text-emerald-600" />
-                    Cash at Registration Desk
-                  </span>
-                  {paymentMethod === 'Cash' && (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  )}
-                </div>
-                <p className="text-xs text-slate-500">
-                  Complete registration now and pay cash directly at the Mechanical Sports Desk with your Roll Number.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPaymentMethod('JazzCash');
-                  setErrorMsg('');
-                }}
-                className={`touch-manipulation text-left p-4 rounded-2xl border-2 transition cursor-pointer ${
-                  paymentMethod === 'JazzCash'
-                    ? 'border-[#0A1226] bg-amber-50/60 ring-2 ring-amber-400/30'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="inline-flex items-center gap-2 font-bold text-slate-900">
-                    <Smartphone className="w-5 h-5 text-amber-600" />
-                    JazzCash Transfer (Online)
-                  </span>
-                  {paymentMethod === 'JazzCash' && (
-                    <CheckCircle2 className="w-5 h-5 text-amber-600" />
-                  )}
-                </div>
-                <p className="text-xs text-slate-500">
-                  Transfer to official JazzCash <strong>{settings.jazzcash_number}</strong> ({settings.jazzcash_title}) &amp; upload receipt screenshot.
-                </p>
-              </button>
-            </div>
-
-            {/* JazzCash Account & Receipt Upload Panel */}
-            {paymentMethod === 'JazzCash' && (
-              <div className="rounded-2xl border border-amber-300 bg-amber-50/70 p-4 sm:p-5 mb-6 space-y-4">
+            {/* Online JazzCash Payment & Receipt Upload Panel */}
+            <div className="rounded-2xl border border-amber-300 bg-amber-50/70 p-4 sm:p-5 mb-6 space-y-4">
                 <div className="bg-white rounded-xl border border-amber-200 p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="text-xs font-bold uppercase tracking-wider text-amber-700">
@@ -1503,7 +1439,6 @@ export function RegistrationWizard() {
                   )}
                 </div>
               </div>
-            )}
 
             <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
               <button
@@ -1610,9 +1545,12 @@ export function RegistrationWizard() {
                   </strong>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-500 block">Department / Class</span>
+                  <span className="text-xs text-slate-500 block">Session / Section</span>
                   <strong className="text-slate-900">
                     {submissionResult.registrant.department}
+                    {submissionResult.registrant.institution
+                      ? ` · ${submissionResult.registrant.institution}`
+                      : ''}
                   </strong>
                 </div>
                 <div>

@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
     const department = String(body.department || '').trim();
     const phone = String(body.phone || '').trim();
     const email = String(body.email || '').trim();
+    const section = String(body.section || '').trim();
     const teamNameInput = String(body.teamName || '').trim();
     const paymentMethod: 'Cash' | 'JazzCash' =
       body.paymentMethod === 'JazzCash' ? 'JazzCash' : 'Cash';
@@ -173,9 +174,9 @@ export async function POST(req: NextRequest) {
       VALUES (
         ${regId}, ${submittedAt}, ${game.name}, ${game.allowed_format}, ${teamName},
         ${captainName}, ${studentId}, ${phone}, ${email}, ${department},
-        '', 1, ${feeDue}, ${verifiedPaid}, ${balance},
+        ${section}, 1, ${feeDue}, ${verifiedPaid}, ${balance},
         ${paymentMethod}, ${paymentStatus}, ${registrationStatus}, FALSE,
-        ${transactionRef}, ${notes || 'Added directly via Organizer Desk'}
+        ${transactionRef}, ${notes || 'Added directly via Organizer Desk (Cash/Classroom)'}
       )
     `;
 

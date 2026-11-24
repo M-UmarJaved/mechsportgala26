@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
         'Player No',
         'Full Name',
         'Roll No / Student ID',
-        'Department / Class',
+        'Session',
         'Phone',
         'Email',
         'Eligibility Status',
@@ -157,7 +157,8 @@ export async function GET(req: NextRequest) {
         'Roll No / Student ID',
         'Contact Phone',
         'Email',
-        'Department / Class',
+        'Session',
+        'Section',
         'Player Count',
         'Fee Due (PKR)',
         'Verified Paid (PKR)',
@@ -172,7 +173,7 @@ export async function GET(req: NextRequest) {
       const data = await sql`
         SELECT registration_id, submitted_at, game_name, format, team_name,
                captain_name, captain_student_id, contact_phone, email, department,
-               player_count, fee_due, verified_paid, balance, payment_method,
+               institution, player_count, fee_due, verified_paid, balance, payment_method,
                payment_status, registration_status, package_applied, transaction_ref, organizer_notes
         FROM registrations ORDER BY id ASC
       `;

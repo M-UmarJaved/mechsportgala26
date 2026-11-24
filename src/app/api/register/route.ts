@@ -21,15 +21,12 @@ export async function POST(req: NextRequest) {
       ? body.selections
       : [];
     const usePackage = Boolean(body.usePackage);
-    const paymentMethod: 'Cash' | 'JazzCash' =
-      body.paymentMethod === 'Online' || body.paymentMethod === 'JazzCash'
-        ? 'JazzCash'
-        : 'Cash';
+    // Public registration portal accepts online JazzCash payments only (Cash entries are recorded by organizers in /admin)
+    const paymentMethod: 'JazzCash' = 'JazzCash';
     const transactionRef = String(body.transactionRef || '').trim();
-    const receiptData: string | null =
-      paymentMethod === 'JazzCash' && body.receiptData
-        ? String(body.receiptData)
-        : null;
+    const receiptData: string | null = body.receiptData
+      ? String(body.receiptData)
+      : null;
 
     // Validate primary registrant
     if (
@@ -37,13 +34,15 @@ export async function POST(req: NextRequest) {
       !registrant.name?.trim() ||
       !registrant.studentId?.trim() ||
       !registrant.department?.trim() ||
-      !registrant.phone?.trim()
+      !registrant.phone?.trim() ||
+      !registrant.email?.trim() ||
+      !registrant.institution?.trim()
     ) {
       return NextResponse.json(
         {
           success: false,
           message:
-            'Primary student Name, Roll No / Student ID, Department / Class, and Phone are required.',
+            'Primary student Name, Roll No / Student ID, Session, Phone, Email Address, and Section are all required.',
         },
         { status: 400 }
       );
@@ -274,6 +273,7 @@ export async function POST(req: NextRequest) {
         department: registrant.department.trim(),
         phone: registrant.phone.trim(),
         email: registrant.email?.trim() || '',
+        institution: registrant.institution?.trim() || '',
       },
       paymentMethod,
       transactionRef,

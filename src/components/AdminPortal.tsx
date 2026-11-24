@@ -124,6 +124,7 @@ export function AdminPortal() {
     captainName: '',
     studentId: '',
     department: '',
+    section: '',
     phone: '',
     email: '',
     teamName: '',
@@ -359,6 +360,7 @@ export function AdminPortal() {
         captainName: '',
         studentId: '',
         department: '',
+        section: '',
         phone: '',
         email: '',
         teamName: '',
@@ -688,6 +690,8 @@ export function AdminPortal() {
                     id: 'all',
                     label: 'All Entries',
                     apply: () => {
+                      setSearchQuery('');
+                      setGameFilter('');
                       setMethodFilter('');
                       setPayStatusFilter('');
                     },
@@ -1172,7 +1176,7 @@ export function AdminPortal() {
                                           <th className="py-2 px-3">#</th>
                                           <th className="py-2 px-3">Full Name</th>
                                           <th className="py-2 px-3">Roll No / Student ID</th>
-                                          <th className="py-2 px-3">Department</th>
+                                          <th className="py-2 px-3">Session</th>
                                           <th className="py-2 px-3">Phone</th>
                                           <th className="py-2 px-3">Eligibility</th>
                                         </tr>
@@ -1915,14 +1919,28 @@ export function AdminPortal() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">
-                  Department / Class <span className="text-red-500">*</span>
+                  Session <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={newEntry.department}
                   onChange={(e) => setNewEntry({ ...newEntry, department: e.target.value })}
-                  placeholder="e.g. Mechanical 4th Sem"
+                  placeholder="e.g. 2023–2027"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  Section <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newEntry.section}
+                  onChange={(e) => setNewEntry({ ...newEntry, section: e.target.value })}
+                  placeholder="e.g. Section A"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
                 />
               </div>
@@ -1937,6 +1955,19 @@ export function AdminPortal() {
                   value={newEntry.phone}
                   onChange={(e) => setNewEntry({ ...newEntry, phone: e.target.value })}
                   placeholder="0300-1234567"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={newEntry.email}
+                  onChange={(e) => setNewEntry({ ...newEntry, email: e.target.value })}
+                  placeholder="student@university.edu.pk"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"
                 />
               </div>
