@@ -673,13 +673,14 @@ export function RegistrationWizard() {
                 </ul>
               </div>
 
-              <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800">
+              <div className="rounded-xl bg-gradient-to-br from-amber-50 via-amber-50/80 to-orange-50/70 border-2 border-amber-300 p-4 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
                     Individual Competitions
                   </h3>
                   {settings.package_enabled && (
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                    <span className="pass-badge-glow inline-flex items-center gap-1 whitespace-nowrap shrink-0 text-[11px] font-extrabold px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                      <Sparkles className="w-3 h-3 shrink-0" />
                       All-Access Pass: {settings.package_fee.toLocaleString()} {settings.currency}
                     </span>
                   )}

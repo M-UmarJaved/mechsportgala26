@@ -19,6 +19,46 @@ body {
   }
 }
 
+/* Eye-catching animated shimmer & subtle glow for Individual All-Access Pass */
+@keyframes passShimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(240%) skewX(-18deg);
+  }
+}
+
+@keyframes passGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35), 0 4px 14px -2px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0), 0 6px 20px -2px rgba(245, 158, 11, 0.45);
+  }
+}
+
+.pass-badge-glow {
+  position: relative;
+  overflow: hidden;
+  animation: passGlow 2.4s ease-in-out infinite;
+}
+
+.pass-badge-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: passShimmer 2.8s ease-in-out infinite;
+}
+
 /* Clean 1-page PDF receipt print styles */
 @media print {
   .no-print {
