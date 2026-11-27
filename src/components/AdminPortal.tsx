@@ -66,7 +66,24 @@ interface ReceiptModalData {
   receipt_data: string | null;
 }
 
-type AdminTab = 'desk' | 'metrics' | 'ai' | 'settings';
+interface ReceiptGalleryItem {
+  registration_id: string;
+  submitted_at: string;
+  game_name: string;
+  format: string;
+  team_name: string;
+  captain_name: string;
+  captain_student_id: string;
+  contact_phone: string;
+  department: string;
+  institution: string;
+  fee_due: number;
+  payment_method: string;
+  transaction_ref: string;
+  receipt_data: string;
+}
+
+type AdminTab = 'desk' | 'receipts' | 'metrics' | 'ai' | 'settings';
 
 export function AdminPortal() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -85,9 +102,13 @@ export function AdminPortal() {
   const [searchQuery, setSearchQuery] = useState('');
   const [gameFilter, setGameFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
-  const [quickFilter, setQuickFilter] = useState<'all' | 'jazzcash' | 'cash'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'online' | 'cash'>('all');
   const [showGuide, setShowGuide] = useState(true);
   const [rosterExportGame, setRosterExportGame] = useState('');
+
+  const [galleryReceipts, setGalleryReceipts] = useState<ReceiptGalleryItem[]>([]);
+  const [gallerySearch, setGallerySearch] = useState('');
+  const [loadingGallery, setLoadingGallery] = useState(false);
 
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
@@ -105,7 +126,7 @@ export function AdminPortal() {
     phone: '',
     email: '',
     teamName: '',
-    paymentMethod: 'Cash' as 'Cash' | 'JazzCash',
+    paymentMethod: 'Cash' as 'Cash' | 'Bank Transfer (UBL)',
     transactionRef: '',
     notes: '',
   });
@@ -150,6 +171,28 @@ export function AdminPortal() {
       setLoadingRecords(false);
     }
   }, [searchQuery, gameFilter, methodFilter]);
+
+  const loadGalleryReceipts = useCallback(async () => {
+    setLoadingGallery(true);
+    try {
+      const params = new URLSearchParams();
+      if (gallerySearch.trim()) params.set('q', gallerySearch.trim());
+      const res = await fetch(`/api/admin/receipts?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setGalleryReceipts(data.receipts || []);
+      }
+    } finally {
+      setLoadingGallery(false);
+    }
+  }, [gallerySearch]);
+
+  useEffect(() => {
+    if (authenticated && activeTab === 'receipts') {
+      const t = setTimeout(() => loadGalleryReceipts(), 200);
+      return () => clearTimeout(t);
+    }
+  }, [authenticated, activeTab, loadGalleryReceipts]);
 
   const loadGamesAndSettings = useCallback(async () => {
     const [gRes, sRes] = await Promise.all([
@@ -396,7 +439,7 @@ export function AdminPortal() {
               Mechanical Sports Gala — Organizer Desk
             </h1>
             <p className="text-xs sm:text-sm text-slate-300">
-              Live Registrations · Classroom Cash Entry · Online JazzCash Receipts · Reports &amp; Gala AI
+              Live Registrations · Classroom Cash Entry · UBL Bank Receipts Gallery · Reports &amp; Gala AI
             </p>
           </div>
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -450,7 +493,7 @@ export function AdminPortal() {
             <div className="font-display text-2xl font-bold text-slate-900">
               {kpis?.totalPlayers ?? 0}
             </div>
-            <div className="text-[11px] text-slate-500">Across all 10 sports</div>
+            <div className="text-[11px] text-slate-500">Across all 11 sports</div>
           </div>
 
           <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-emerald-500">
@@ -458,16 +501,16 @@ export function AdminPortal() {
             <div className="font-display text-xl font-bold text-emerald-700">
               {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
             </div>
-            <div className="text-[11px] text-slate-500">Online + Classroom Cash</div>
+            <div className="text-[11px] text-slate-500">Online UBL + Classroom Cash</div>
           </div>
 
           <div className="bg-white rounded-xl p-4 border border-slate-200 border-l-4 border-l-amber-500">
-            <div className="text-[11px] font-bold uppercase text-slate-500">JazzCash Online</div>
+            <div className="text-[11px] font-bold uppercase text-slate-500">UBL Bank Online</div>
             <div className="font-display text-xl font-bold text-slate-900">
               {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR
             </div>
             <div className="text-[11px] text-slate-500">
-              {kpis?.jazzcashEntries ?? 0} entries ({settings?.jazzcash_number || '03281159050'})
+              {kpis?.jazzcashEntries ?? 0} entries ({settings?.jazzcash_title || 'Sharjil Bilal'})
             </div>
           </div>
 
@@ -502,9 +545,8 @@ export function AdminPortal() {
           {showGuide && (
             <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs text-slate-700">
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
-                <strong className="text-[#0A1226] block mb-0.5">1. Online JazzCash Entries</strong>
-                Students registering online upload their JazzCash receipt. Click blue{' '}
-                <strong className="text-blue-700">Receipt</strong> on any row to view or download their screenshot anytime.
+                <strong className="text-[#0A1226] block mb-0.5">1. Receipts Gallery (Visual Audit)</strong>
+                Open <strong>Receipts Gallery</strong> to inspect all uploaded UBL Bank Transfer screenshots side-by-side with student name, Roll No &amp; exact fee.
               </div>
               <div className="bg-white rounded-xl p-3 border border-amber-200/80">
                 <strong className="text-[#0A1226] block mb-0.5">2. Classroom Cash Collection</strong>
@@ -526,6 +568,7 @@ export function AdminPortal() {
         <div className="no-print grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5">
           {[
             { id: 'desk', label: 'All Registrations', icon: Search },
+            { id: 'receipts', label: 'Receipts Gallery', icon: FileImage },
             { id: 'metrics', label: 'Reports & Downloads', icon: BarChart3 },
             { id: 'ai', label: 'Ask Gala AI', icon: Sparkles },
             { id: 'settings', label: 'Games & Settings', icon: Sliders },
@@ -570,9 +613,9 @@ export function AdminPortal() {
                     },
                   },
                   {
-                    id: 'jazzcash',
-                    label: 'JazzCash (Online Receipts)',
-                    apply: () => setMethodFilter('JazzCash'),
+                    id: 'online',
+                    label: 'UBL Bank (Online Receipts)',
+                    apply: () => setMethodFilter('Online'),
                   },
                   {
                     id: 'cash',
@@ -618,7 +661,7 @@ export function AdminPortal() {
                     onChange={(e) => setGameFilter(e.target.value)}
                     className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
                   >
-                    <option value="">All 10 Sports</option>
+                    <option value="">All 11 Sports</option>
                     {games.map((g) => (
                       <option key={g.name} value={g.name}>
                         {g.name}
@@ -911,6 +954,141 @@ export function AdminPortal() {
           </div>
         )}
 
+        {/* TAB: RECEIPTS GALLERY (EASY VISUAL AUDIT FOR TEAM) */}
+        {activeTab === 'receipts' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display font-bold text-lg text-slate-900">
+                  Online Payment Receipts Gallery
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500">
+                  All uploaded UBL Bank Transfer screenshots stored in Neon DB — inspect student name, Roll No, TID &amp; exact fee side-by-side. Click any receipt to zoom or download.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={gallerySearch}
+                    onChange={(e) => setGallerySearch(e.target.value)}
+                    placeholder="Filter Roll No, Name, TID..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={loadGalleryReceipts}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingGallery ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {loadingGallery && galleryReceipts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" /> Loading receipt screenshots...
+              </div>
+            ) : galleryReceipts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-sm text-slate-500">
+                No online payment receipts uploaded yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {galleryReceipts.map((item) => (
+                  <div
+                    key={item.registration_id}
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between"
+                  >
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReceiptModal({
+                            registration_id: item.registration_id,
+                            captain_name: item.captain_name,
+                            captain_student_id: item.captain_student_id,
+                            game_name: item.game_name,
+                            fee_due: item.fee_due,
+                            transaction_ref: item.transaction_ref,
+                            receipt_data: item.receipt_data,
+                          })
+                        }
+                        className="w-full h-56 bg-slate-100 overflow-hidden flex items-center justify-center relative group cursor-pointer"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.receipt_data}
+                          alt={`Receipt ${item.registration_id}`}
+                          className="w-full h-full object-contain group-hover:scale-105 transition duration-200"
+                        />
+                        <span className="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-slate-900/80 text-white text-[11px] font-bold">
+                          Tap to Zoom
+                        </span>
+                      </button>
+
+                      <div className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-mono text-xs font-bold text-[#0A1226]">
+                              {item.registration_id}
+                            </div>
+                            <div className="font-bold text-slate-900 text-sm">
+                              {item.captain_name}
+                            </div>
+                            <div className="font-mono text-xs text-slate-600">
+                              {item.captain_student_id} · {item.department}
+                              {item.institution ? ` (${item.institution})` : ''}
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-extrabold text-xs whitespace-nowrap">
+                            {item.fee_due.toLocaleString()} PKR
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                          <div>
+                            <strong>Sport:</strong> {item.game_name} ({item.team_name})
+                          </div>
+                          <div>
+                            <strong>Phone:</strong> {item.contact_phone}
+                          </div>
+                          {item.transaction_ref && (
+                            <div>
+                              <strong>TID:</strong>{' '}
+                              <span className="font-mono">{item.transaction_ref}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-4 pb-4 flex items-center gap-2">
+                      <a
+                        href={item.receipt_data}
+                        download={`receipt-${item.registration_id}-${item.captain_student_id}.jpg`}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#0A1226] text-amber-300 text-xs font-bold"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReg(item.registration_id)}
+                        className="p-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 cursor-pointer"
+                        title="Delete registration"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 2: REPORTS & DOWNLOADS CENTER */}
         {activeTab === 'metrics' && (
           <div className="space-y-5">
@@ -982,7 +1160,7 @@ export function AdminPortal() {
                     onChange={(e) => setRosterExportGame(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-slate-50"
                   >
-                    <option value="">All 10 Sports Combined</option>
+                    <option value="">All 11 Sports Combined</option>
                     {games.map((g) => (
                       <option key={g.name} value={g.name}>
                         {g.name} Players Only
@@ -1015,10 +1193,10 @@ export function AdminPortal() {
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    3. Payments &amp; Cash/JazzCash Ledger
+                    3. Payments &amp; Cash/UBL Bank Ledger
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    Complete financial log of every JazzCash online payment and classroom Cash entry with TID references and timestamps.
+                    Complete financial log of every UBL Bank Transfer and classroom Cash entry with TID references and timestamps.
                   </p>
                 </div>
                 <a
@@ -1072,7 +1250,7 @@ export function AdminPortal() {
                   Live Sport-by-Sport Summary Report
                 </h3>
                 <p className="text-xs text-slate-500">
-                  JazzCash Online: {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR · Classroom Cash:{' '}
+                  UBL Bank Online: {(kpis?.jazzcashVerified ?? 0).toLocaleString()} PKR · Classroom Cash:{' '}
                   {(kpis?.cashVerified ?? 0).toLocaleString()} PKR · Total Collected:{' '}
                   {(kpis?.totalFeesDue ?? 0).toLocaleString()} PKR
                 </p>
@@ -1170,7 +1348,7 @@ export function AdminPortal() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1">
-                      JazzCash Number
+                      Bank IBAN Number
                     </label>
                     <input
                       type="text"
@@ -1183,7 +1361,7 @@ export function AdminPortal() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-600 mb-1">
-                      JazzCash Account Title
+                      Bank Account Holder
                     </label>
                     <input
                       type="text"
@@ -1214,7 +1392,7 @@ export function AdminPortal() {
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
               <div className="px-5 py-4 border-b border-slate-200">
                 <h2 className="font-display font-bold text-lg text-slate-900">
-                  Game Setup &amp; Fees (All 10 Sports)
+                  Game Setup &amp; Fees (All 11 Sports)
                 </h2>
                 <p className="text-xs text-slate-500">
                   Changes apply immediately to the live student registration website.
@@ -1329,7 +1507,7 @@ export function AdminPortal() {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-display font-bold text-lg text-slate-900">
-                      JazzCash Payment Receipt
+                      UBL Bank Transfer Receipt
                     </h3>
                     <p className="text-xs text-slate-500">
                       {receiptModal.registration_id} · {receiptModal.captain_name} (
@@ -1346,8 +1524,7 @@ export function AdminPortal() {
                 </div>
 
                 <div className="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3.5 py-2 mb-3 font-semibold">
-                  JazzCash: {settings?.jazzcash_number || '03281159050'} (
-                  {settings?.jazzcash_title || 'Abdul Ahad'}) · Paid:{' '}
+                  UBL — {settings?.jazzcash_title || 'Sharjil Bilal'} ({settings?.jazzcash_number || 'PK15UNIL0109000336020741'}) · Paid:{' '}
                   {receiptModal.fee_due.toLocaleString()} PKR
                   {receiptModal.transaction_ref ? ` · TID: ${receiptModal.transaction_ref}` : ''}
                 </div>
@@ -1537,13 +1714,13 @@ export function AdminPortal() {
                   onChange={(e) =>
                     setNewEntry({
                       ...newEntry,
-                      paymentMethod: e.target.value as 'Cash' | 'JazzCash',
+                      paymentMethod: e.target.value as 'Cash' | 'Bank Transfer (UBL)',
                     })
                   }
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
                 >
                   <option value="Cash">Cash (Classroom Collection)</option>
-                  <option value="JazzCash">JazzCash</option>
+                  <option value="Bank Transfer (UBL)">Bank Transfer (UBL)</option>
                 </select>
               </div>
             </div>

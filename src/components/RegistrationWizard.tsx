@@ -48,7 +48,7 @@ interface SubmissionResult {
   success: boolean;
   submissionTime: string;
   registrant: RegistrantInput;
-  paymentMethod: 'Cash' | 'JazzCash';
+  paymentMethod: string;
   transactionRef: string;
   totalFeeDue: number;
   currency: string;
@@ -91,7 +91,7 @@ export function RegistrationWizard() {
   const [feeSummary, setFeeSummary] = useState<FeeCalculationResult | null>(null);
   const [calculatingFee, setCalculatingFee] = useState<boolean>(false);
 
-  const [paymentMethod] = useState<'JazzCash'>('JazzCash');
+  const [paymentMethod] = useState<'Bank Transfer (UBL)'>('Bank Transfer (UBL)');
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [receiptData, setReceiptData] = useState<string | null>(null);
   const [receiptName, setReceiptName] = useState<string>('');
@@ -381,8 +381,8 @@ export function RegistrationWizard() {
   const handleReceiptSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      setErrorMsg('Image exceeds 15MB limit. Please choose a smaller screenshot.');
+    if (file.size > 20 * 1024 * 1024) {
+      setErrorMsg('Image exceeds 20MB limit. Please take a screenshot and upload it.');
       return;
     }
 
@@ -390,44 +390,74 @@ export function RegistrationWizard() {
     setCompressing(true);
     setReceiptName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const rawUrl = String(ev.target?.result || '');
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const maxDim = 1100;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      try {
+        const maxDim = 900;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
           }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, w, h);
-          const compressed = canvas.toDataURL('image/jpeg', 0.8);
-          setReceiptData(compressed);
-        } catch {
-          setReceiptData(rawUrl);
-        } finally {
-          setCompressing(false);
         }
-      };
-      img.onerror = () => {
-        setReceiptData(rawUrl);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas unavailable');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.72);
+        setReceiptData(compressed);
+      } catch {
+        // Fallback via FileReader for small valid images
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const rawUrl = String(ev.target?.result || '');
+          if (rawUrl.length > 3_500_000) {
+            setErrorMsg('Photo is too large to upload. Please take a screenshot of your receipt and upload that.');
+            setReceiptData(null);
+          } else {
+            setReceiptData(rawUrl);
+          }
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setCompressing(false);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const rawUrl = String(ev.target?.result || '');
+        if (!/^data:image\//i.test(rawUrl) || rawUrl.length > 3_500_000) {
+          setErrorMsg('Unsupported or oversized image format. Please take a regular screenshot (JPG/PNG) of your bank receipt.');
+          setReceiptData(null);
+          setReceiptName('');
+        } else {
+          setReceiptData(rawUrl);
+        }
         setCompressing(false);
       };
-      img.src = rawUrl;
+      reader.onerror = () => {
+        setErrorMsg('Could not read the selected image. Please try another screenshot.');
+        setCompressing(false);
+      };
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
+
+    img.src = objectUrl;
   };
 
   const clearReceipt = () => {
@@ -438,8 +468,8 @@ export function RegistrationWizard() {
 
   const handleSubmit = async () => {
     setErrorMsg('');
-    if (paymentMethod === 'JazzCash' && !receiptData) {
-      setErrorMsg('Please upload a screenshot/photo of your JazzCash transaction receipt.');
+    if (!receiptData) {
+      setErrorMsg('Please upload a screenshot/photo of your UBL Bank Transfer receipt.');
       return;
     }
 
@@ -454,9 +484,13 @@ export function RegistrationWizard() {
           usePackage,
           paymentMethod,
           transactionRef: transactionRef.trim(),
-          receiptData: paymentMethod === 'JazzCash' ? receiptData : null,
+          receiptData,
         }),
       });
+
+      if (res.status === 413) {
+        throw new Error('Receipt image is too large. Please upload a cropped screenshot of your receipt.');
+      }
 
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -479,7 +513,7 @@ export function RegistrationWizard() {
     let text = `🏆 ${settings.event_title.toUpperCase()} — REGISTRATION SLIP 🏆\n`;
     text += `Student: ${r.registrant.name} (Roll No: ${r.registrant.studentId})\n`;
     text += `Session: ${r.registrant.department}${r.registrant.institution ? ` · Section: ${r.registrant.institution}` : ''}\n`;
-    text += `Payment: ${r.paymentMethod === 'JazzCash' ? 'JazzCash' : 'Cash at Registration Desk'}\n`;
+    text += `Payment: Bank Transfer (UBL)\n`;
     text += `Total Fee: ${r.totalFeeDue.toLocaleString()} ${r.currency}\n\n`;
     text += `REGISTERED SPORTS:\n`;
     r.entries.forEach((e) => {
@@ -710,7 +744,7 @@ export function RegistrationWizard() {
               <div className="flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Solo Pass ({settings.package_fee.toLocaleString()} {settings.currency}):</strong> Covers all 5 individual games (team &amp; pair games are billed separately).
+                  <strong className="text-white">Solo Pass ({settings.package_fee.toLocaleString()} {settings.currency}):</strong> Covers all 6 individual games — Badminton (Single), Table Tennis (Single), Basketball (Single), Chess, Rubik&apos;s Cube &amp; Arm Wrestling (team &amp; pair games are billed separately).
                 </span>
               </div>
             </div>
@@ -940,7 +974,7 @@ export function RegistrationWizard() {
                       usePackage ? 'text-amber-800' : 'text-slate-300'
                     }`}
                   >
-                    Covers all 5 solo sports (Table Tennis Single, Basketball Single, Chess, Rubik&apos;s Cube, Arm Wrestling) for a flat {settings.package_fee.toLocaleString()} {settings.currency}. Team &amp; pair games are billed separately.
+                    Covers all 6 solo sports (Badminton Single, Table Tennis Single, Basketball Single, Chess, Rubik&apos;s Cube, Arm Wrestling) for a flat {settings.package_fee.toLocaleString()} {settings.currency}. Team &amp; pair games are billed separately.
                   </p>
                 </div>
                 <button
@@ -1127,6 +1161,12 @@ export function RegistrationWizard() {
                       </span>
                     </div>
 
+                    {gameName === 'Football' && (
+                      <div className="mb-4 rounded-xl bg-blue-50 border border-blue-200 px-3.5 py-2.5 text-xs text-blue-900 font-medium">
+                        <strong>Football Squad Rule:</strong> The playing team consists of <strong>7 players</strong> on field, and the total squad can be up to <strong>10 players</strong> (including substitutes).
+                      </div>
+                    )}
+
                     {isTeamOrPair && (
                       <div className="mb-4">
                         <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">
@@ -1259,10 +1299,10 @@ export function RegistrationWizard() {
               </div>
               <div>
                 <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900">
-                  Summary &amp; Online JazzCash Payment
+                  Summary &amp; Online Bank Transfer (UBL)
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Transfer the verified total to the official JazzCash account below and upload your receipt screenshot to complete registration.
+                  Transfer the verified total to the official United Bank Limited (UBL) account below and upload your receipt screenshot to complete registration.
                 </p>
               </div>
             </div>
@@ -1338,12 +1378,12 @@ export function RegistrationWizard() {
               )}
             </div>
 
-            {/* Online JazzCash Payment & Receipt Upload Panel */}
+            {/* Online UBL Bank Transfer & Receipt Upload Panel */}
             <div className="rounded-2xl border border-amber-300 bg-amber-50/70 p-4 sm:p-5 mb-6 space-y-4">
                 <div className="bg-white rounded-xl border border-amber-200 p-4">
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div className="text-xs font-bold uppercase tracking-wider text-amber-700">
-                      Official JazzCash Account Details
+                      Official Bank Account Details — {settings.organizer_contact || 'United Bank Limited (UBL)'}
                     </div>
                     <button
                       type="button"
@@ -1351,32 +1391,38 @@ export function RegistrationWizard() {
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold cursor-pointer transition"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      {copiedJazzCash ? 'Copied!' : 'Copy Number'}
+                      {copiedJazzCash ? 'IBAN Copied!' : 'Copy IBAN'}
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
                     <div>
-                      <span className="text-slate-500">JazzCash Number: </span>
-                      <strong className="font-mono text-base text-amber-900">
-                        {settings.jazzcash_number}
+                      <span className="text-xs text-slate-500 block">Bank Name</span>
+                      <strong className="text-slate-900">
+                        {settings.organizer_contact || 'United Bank Limited (UBL)'}
                       </strong>
                     </div>
                     <div>
-                      <span className="text-slate-500">Account Holder: </span>
+                      <span className="text-xs text-slate-500 block">Account Holder</span>
                       <strong className="text-slate-900">{settings.jazzcash_title}</strong>
+                    </div>
+                    <div className="sm:col-span-2 bg-amber-50/80 rounded-lg px-3 py-2 border border-amber-200/80">
+                      <span className="text-xs text-slate-500 block">IBAN Number</span>
+                      <strong className="font-mono text-sm sm:text-base text-amber-950 break-all">
+                        {settings.jazzcash_number}
+                      </strong>
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wide text-slate-700 mb-1.5">
-                    JazzCash Transaction ID / TID (Optional)
+                    Bank Transaction ID / Reference (Optional)
                   </label>
                   <input
                     type="text"
                     value={transactionRef}
                     onChange={(e) => setTransactionRef(e.target.value)}
-                    placeholder="e.g. TID 01984726351"
+                    placeholder="e.g. UBL Ref / Raast TID"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:border-[#0A1226] focus:outline-none text-sm"
                   />
                 </div>
@@ -1401,14 +1447,14 @@ export function RegistrationWizard() {
                       {compressing ? (
                         <>
                           <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
-                          <span>Optimizing photo for fast mobile upload...</span>
+                          <span>Optimizing receipt for fast upload...</span>
                         </>
                       ) : (
                         <>
                           <Upload className="w-6 h-6 text-amber-600" />
-                          <span>Tap to Choose or Take Photo of JazzCash Receipt</span>
+                          <span>Tap to Upload Bank Transfer Receipt Screenshot</span>
                           <span className="text-xs font-normal text-slate-400">
-                            JPG / PNG — Auto-compressed for mobile
+                            JPG / PNG — Auto-compressed for fast mobile upload
                           </span>
                         </>
                       )}
@@ -1522,7 +1568,7 @@ export function RegistrationWizard() {
                   </p>
                 </div>
                 <span className="px-3 py-1.5 rounded-lg text-xs font-bold border bg-emerald-50 text-emerald-800 border-emerald-300">
-                  Registration Confirmed · Paid (JazzCash)
+                  Registration Confirmed · Paid (UBL Bank Transfer)
                 </span>
               </div>
 
@@ -1553,18 +1599,13 @@ export function RegistrationWizard() {
                 <div>
                   <span className="text-xs text-slate-500 block">Payment Method</span>
                   <strong className="text-slate-900">
-                    {submissionResult.paymentMethod === 'JazzCash'
-                      ? `JazzCash (${settings.jazzcash_number} — ${settings.jazzcash_title})`
-                      : 'Cash at Registration Desk'}
+                    {settings.organizer_contact || 'United Bank Limited (UBL)'} — {settings.jazzcash_title}
                   </strong>
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block">Reference / TID</span>
                   <strong className="text-slate-900">
-                    {submissionResult.transactionRef ||
-                      (submissionResult.paymentMethod === 'JazzCash'
-                        ? 'Receipt Screenshot Uploaded'
-                        : 'Payable at Desk')}
+                    {submissionResult.transactionRef || 'Bank Receipt Screenshot Uploaded'}
                   </strong>
                 </div>
               </div>
@@ -1612,7 +1653,7 @@ export function RegistrationWizard() {
 
               <div className="text-xs text-slate-500 border-t border-slate-200 pt-3 flex flex-col sm:flex-row justify-between gap-2">
                 <span>
-                  Your registration &amp; JazzCash receipt have been recorded. Keep this slip for check-in on event day.
+                  Your registration &amp; UBL Bank Transfer receipt have been recorded. Keep this slip for check-in on event day.
                 </span>
                 <span className="font-semibold text-emerald-700">
                   Status: Registration Confirmed

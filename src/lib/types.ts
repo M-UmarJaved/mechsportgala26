@@ -119,7 +119,7 @@ export interface RegistrationRecord {
   fee_due: number;
   verified_paid: number;
   balance: number;
-  payment_method: 'Cash' | 'JazzCash';
+  payment_method: 'Cash' | 'Bank Transfer (UBL)' | 'JazzCash';
   payment_status: 'Unpaid' | 'Partial' | 'Paid';
   registration_status: 'Pending Review' | 'Approved' | 'Rejected' | 'Waitlisted';
   package_applied: boolean;

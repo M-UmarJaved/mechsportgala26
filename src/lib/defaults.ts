@@ -6,10 +6,10 @@ export const DEFAULT_SETTINGS: EventSettings = {
   registration_deadline: '10 December 2026',
   currency: 'PKR',
   package_enabled: true,
-  package_fee: 1000,
-  jazzcash_number: '03281159050',
-  jazzcash_title: 'Abdul Ahad',
-  organizer_contact: 'Mechanical Engineering Sports Committee',
+  package_fee: 1200,
+  jazzcash_number: 'PK15UNIL0109000336020741',
+  jazzcash_title: 'Sharjil Bilal',
+  organizer_contact: 'United Bank Limited (UBL)',
 };
 
 export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
@@ -36,7 +36,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     fee_amount: 1400,
     is_open: true,
     is_package_eligible: false,
-    notes: '7 Players Team (squad 7–10). 1,400 PKR per team.',
+    notes: 'Playing team consists of 7 players; total squad can be up to 10 players. 1,400 PKR per team.',
     sort_order: 2,
   },
   {
@@ -62,7 +62,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     fee_amount: 500,
     is_open: true,
     is_package_eligible: false,
-    notes: '2 Players Team (Doubles only). 500 PKR per pair.',
+    notes: '2 Players Team (Doubles). 500 PKR per pair.',
     sort_order: 4,
   },
   {
@@ -79,6 +79,19 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     sort_order: 5,
   },
   {
+    name: 'Badminton (Single)',
+    entry_type: 'Individual',
+    allowed_format: 'Singles',
+    min_players: 1,
+    max_players: 1,
+    fee_basis: 'Per Player',
+    fee_amount: 300,
+    is_open: true,
+    is_package_eligible: true,
+    notes: 'Singles competition. 300 PKR. Eligible for Individual Pass.',
+    sort_order: 6,
+  },
+  {
     name: 'Table Tennis (Single)',
     entry_type: 'Individual',
     allowed_format: 'Singles',
@@ -89,7 +102,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     is_open: true,
     is_package_eligible: true,
     notes: 'Singles only. 300 PKR. Eligible for Individual Pass.',
-    sort_order: 6,
+    sort_order: 7,
   },
   {
     name: 'Basketball (Single)',
@@ -102,7 +115,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     is_open: true,
     is_package_eligible: true,
     notes: 'Singles competition. 300 PKR. Eligible for Individual Pass.',
-    sort_order: 7,
+    sort_order: 8,
   },
   {
     name: 'Chess',
@@ -115,7 +128,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     is_open: true,
     is_package_eligible: true,
     notes: 'Singles only. 200 PKR. Eligible for Individual Pass.',
-    sort_order: 8,
+    sort_order: 9,
   },
   {
     name: "Rubik's Cube",
@@ -128,7 +141,7 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     is_open: true,
     is_package_eligible: true,
     notes: 'Singles only. 200 PKR. Eligible for Individual Pass.',
-    sort_order: 9,
+    sort_order: 10,
   },
   {
     name: 'Arm Wrestling',
@@ -141,6 +154,6 @@ export const DEFAULT_GAMES: Omit<GameConfig, 'id'>[] = [
     is_open: true,
     is_package_eligible: true,
     notes: 'Singles only. 200 PKR. Eligible for Individual Pass.',
-    sort_order: 10,
+    sort_order: 11,
   },
 ];

@@ -73,7 +73,7 @@ export async function GET() {
       if (regStatus === 'Pending Review') pendingApproval++;
       if (regStatus === 'Approved') approvedEntries++;
       if (regStatus === 'Waitlisted') waitlistedEntries++;
-      if (payMethod === 'JazzCash') jazzcashEntries++;
+      if (payMethod !== 'Cash') jazzcashEntries++;
       else cashEntries++;
 
       if (!gameStats[game]) {
@@ -127,10 +127,10 @@ export async function GET() {
       const status = String(pay.status || 'Pending');
 
       if (status === 'Verified') {
-        if (method === 'JazzCash') jazzcashVerified += amount;
+        if (method !== 'Cash') jazzcashVerified += amount;
         else cashVerified += amount;
       } else if (status === 'Pending') {
-        if (method === 'JazzCash') jazzcashPending += amount;
+        if (method !== 'Cash') jazzcashPending += amount;
         else cashPending += amount;
       }
     }

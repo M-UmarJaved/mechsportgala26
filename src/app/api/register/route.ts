@@ -21,11 +21,11 @@ export async function POST(req: NextRequest) {
       ? body.selections
       : [];
     const usePackage = Boolean(body.usePackage);
-    // Public registration portal accepts online JazzCash payments only (Cash entries are recorded by organizers in /admin)
-    const paymentMethod: 'JazzCash' = 'JazzCash';
+    // Public registration portal accepts online Bank Transfer (UBL) payments only (Cash entries are recorded by organizers in /admin)
+    const paymentMethod = 'Bank Transfer (UBL)';
     const transactionRef = String(body.transactionRef || '').trim();
     const receiptData: string | null = body.receiptData
-      ? String(body.receiptData)
+      ? String(body.receiptData).trim()
       : null;
 
     // Validate primary registrant
@@ -55,35 +55,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (paymentMethod === 'JazzCash' && !receiptData) {
+    if (!receiptData) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Please upload a screenshot/photo of your JazzCash payment receipt.',
+          message: 'Please upload a screenshot/photo of your UBL Bank Transfer receipt.',
         },
         { status: 400 }
       );
     }
 
-    if (receiptData && receiptData.length > 3_500_000) {
+    if (receiptData.length > 3_800_000) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Receipt image is too large. Please upload a smaller photo.',
+          message: 'Receipt image is too large. Please take a screenshot or smaller photo and try again.',
         },
         { status: 400 }
       );
     }
 
     if (
-      receiptData &&
-      (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(receiptData) ||
-        receiptData.toLowerCase().includes('svg'))
+      !/^data:image\/[a-z0-9.+-]+;base64,/i.test(receiptData) ||
+      receiptData.slice(0, 60).toLowerCase().includes('svg')
     ) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Invalid receipt format. Please upload a JPG, PNG, or WebP screenshot.',
+          message: 'Invalid receipt image format. Please upload a standard screenshot or photo (JPG, PNG, or WebP).',
         },
         { status: 400 }
       );
@@ -185,7 +184,7 @@ export async function POST(req: NextRequest) {
           : `${registrant.name.trim()}'s ${game.entry_type}`);
 
       const feeDue = feeInfo.fee;
-      const organizerNote = `Method: JazzCash${transactionRef ? ` | TID: ${transactionRef}` : ''} | Receipt uploaded`;
+      const organizerNote = `Method: Bank Transfer (UBL)${transactionRef ? ` | TID: ${transactionRef}` : ''} | Receipt uploaded`;
 
       // Insert registration as Paid & Confirmed automatically
       await sql`
@@ -242,9 +241,9 @@ export async function POST(req: NextRequest) {
           VALUES (
             ${payId}, ${submittedAt}, ${regId}, ${game.name}, ${registrant.name.trim()},
             ${feeDue}, ${paymentMethod},
-            ${transactionRef || 'JazzCash screenshot attached'},
-            ${receiptData}, 'Verified', 'Online Form (JazzCash)', ${submittedAt},
-            'Online JazzCash payment with receipt screenshot'
+            ${transactionRef || 'UBL Bank Transfer screenshot attached'},
+            ${receiptData}, 'Verified', 'Online Form (UBL)', ${submittedAt},
+            'Online UBL Bank Transfer with receipt screenshot'
           )
         `;
       }

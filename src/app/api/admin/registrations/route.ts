@@ -79,7 +79,14 @@ export async function GET(req: NextRequest) {
       .filter((r) => {
         if (gameFilter && String(r.game_name) !== gameFilter) return false;
         if (payStatusFilter && String(r.payment_status) !== payStatusFilter) return false;
-        if (methodFilter && String(r.payment_method) !== methodFilter) return false;
+        if (methodFilter) {
+          const pm = String(r.payment_method || '');
+          if (methodFilter === 'Online') {
+            if (pm === 'Cash') return false;
+          } else if (pm !== methodFilter) {
+            return false;
+          }
+        }
 
         if (!q) return true;
         const playerMatch = r.players.some(
@@ -127,8 +134,10 @@ export async function POST(req: NextRequest) {
     const email = String(body.email || '').trim();
     const section = String(body.section || '').trim();
     const teamNameInput = String(body.teamName || '').trim();
-    const paymentMethod: 'Cash' | 'JazzCash' =
-      body.paymentMethod === 'JazzCash' ? 'JazzCash' : 'Cash';
+    const paymentMethod =
+      body.paymentMethod === 'Bank Transfer (UBL)' || body.paymentMethod === 'JazzCash'
+        ? 'Bank Transfer (UBL)'
+        : 'Cash';
     const transactionRef = String(body.transactionRef || '').trim();
     const markPaidAndApproved = Boolean(body.markPaidAndApproved);
     const notes = String(body.notes || '').trim();

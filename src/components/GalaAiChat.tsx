@@ -11,7 +11,7 @@ interface ChatMessage {
 
 const QUICK_PROMPTS = [
   'Give me a complete event summary of registrations and revenue',
-  'How much Cash vs JazzCash have we collected so far?',
+  'How much Cash vs UBL Bank Transfer have we collected so far?',
   'Show sport-by-sport registration counts',
   'List all Cricket teams registered',
   'Which session has the most registrations?',
