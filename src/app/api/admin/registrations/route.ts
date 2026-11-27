@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
           institution, player_count, fee_due, verified_paid, balance,
           payment_method, payment_status, registration_status, package_applied,
           transaction_ref, (receipt_data IS NOT NULL AND receipt_data <> '') AS has_receipt,
-          organizer_notes
+          receipt_data, organizer_notes
         FROM registrations
         ORDER BY id DESC
       `,

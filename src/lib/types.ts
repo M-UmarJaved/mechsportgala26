@@ -125,6 +125,7 @@ export interface RegistrationRecord {
   package_applied: boolean;
   transaction_ref: string;
   has_receipt: boolean;
+  receipt_data?: string | null;
   organizer_notes: string;
   players?: PlayerRecord[];
   payments?: PaymentRecord[];

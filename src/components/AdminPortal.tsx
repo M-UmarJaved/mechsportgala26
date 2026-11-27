@@ -730,17 +730,49 @@ export function AdminPortal() {
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1 border border-slate-100">
-                        <div className="flex items-center justify-between">
-                          <strong className="text-slate-900 text-sm">{r.captain_name}</strong>
-                          <span className="font-mono font-bold text-[#0A1226]">
-                            {r.captain_student_id}
-                          </span>
+                      <div className="bg-slate-50 rounded-xl p-3 text-xs flex items-center justify-between gap-3 border border-slate-100">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <strong className="text-slate-900 text-sm">{r.captain_name}</strong>
+                            <span className="font-mono font-bold text-[#0A1226]">
+                              {r.captain_student_id}
+                            </span>
+                          </div>
+                          <div className="text-slate-500">
+                            {r.department}
+                            {r.institution ? ` · ${r.institution}` : ''} · {r.contact_phone}
+                          </div>
+                          {r.transaction_ref && (
+                            <div className="font-mono text-[11px] text-slate-600">
+                              TID: {r.transaction_ref}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-slate-500">
-                          {r.department}
-                          {r.institution ? ` · ${r.institution}` : ''} · {r.contact_phone}
-                        </div>
+                        {r.receipt_data && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReceiptModal({
+                                registration_id: r.registration_id,
+                                captain_name: r.captain_name,
+                                captain_student_id: r.captain_student_id,
+                                game_name: r.game_name,
+                                fee_due: r.fee_due,
+                                transaction_ref: r.transaction_ref,
+                                receipt_data: r.receipt_data || null,
+                              })
+                            }
+                            className="shrink-0 group relative rounded-lg overflow-hidden border-2 border-blue-200 hover:border-blue-600 cursor-pointer"
+                            title="Tap to zoom receipt"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={r.receipt_data}
+                              alt={`Receipt ${r.registration_id}`}
+                              className="w-16 h-16 object-cover"
+                            />
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -806,19 +838,20 @@ export function AdminPortal() {
                       <th className="py-3 px-4">Sport &amp; Team</th>
                       <th className="py-3 px-4">Student / Roll No / Session</th>
                       <th className="py-3 px-4">Fee Paid &amp; Method</th>
+                      <th className="py-3 px-4">Receipt Image</th>
                       <th className="py-3 px-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loadingRecords && records.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-500">
+                        <td colSpan={6} className="py-10 text-center text-slate-500">
                           Loading registrations from Neon DB...
                         </td>
                       </tr>
                     ) : records.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-500">
+                        <td colSpan={6} className="py-10 text-center text-slate-500">
                           No registrations found matching your search.
                         </td>
                       </tr>
@@ -870,14 +903,55 @@ export function AdminPortal() {
                                 </span>
                               </td>
                               <td className="py-3 px-4">
+                                {r.receipt_data ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setReceiptModal({
+                                        registration_id: r.registration_id,
+                                        captain_name: r.captain_name,
+                                        captain_student_id: r.captain_student_id,
+                                        game_name: r.game_name,
+                                        fee_due: r.fee_due,
+                                        transaction_ref: r.transaction_ref,
+                                        receipt_data: r.receipt_data || null,
+                                      })
+                                    }
+                                    className="group relative inline-block rounded-lg overflow-hidden border-2 border-blue-200 hover:border-blue-600 shadow-xs cursor-pointer transition"
+                                    title="Click to zoom receipt full screen"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={r.receipt_data}
+                                      alt={`Receipt ${r.registration_id}`}
+                                      className="w-14 h-14 object-cover group-hover:scale-105 transition"
+                                    />
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-slate-400">Cash / None</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   {r.has_receipt && (
                                     <button
                                       type="button"
-                                      onClick={() => openReceipt(r.registration_id)}
+                                      onClick={() =>
+                                        r.receipt_data
+                                          ? setReceiptModal({
+                                              registration_id: r.registration_id,
+                                              captain_name: r.captain_name,
+                                              captain_student_id: r.captain_student_id,
+                                              game_name: r.game_name,
+                                              fee_due: r.fee_due,
+                                              transaction_ref: r.transaction_ref,
+                                              receipt_data: r.receipt_data || null,
+                                            })
+                                          : openReceipt(r.registration_id)
+                                      }
                                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
                                     >
-                                      <FileImage className="w-3.5 h-3.5" /> Receipt
+                                      <FileImage className="w-3.5 h-3.5" /> Zoom
                                     </button>
                                   )}
 
@@ -906,7 +980,7 @@ export function AdminPortal() {
 
                             {isExpanded && (
                               <tr className="bg-slate-50 border-b border-slate-200">
-                                <td colSpan={5} className="p-4">
+                                <td colSpan={6} className="p-4">
                                   <div className="text-xs font-bold uppercase text-slate-500 mb-2">
                                     Player Roster — {r.registration_id}
                                   </div>
