@@ -542,7 +542,7 @@ export function RegistrationWizard() {
 
   return (
     <div
-      className={`min-h-screen bg-slate-50 overflow-x-hidden ${
+      className={`min-h-screen bg-slate-50 overflow-x-hidden print:min-h-0 print:bg-white print:pb-0 print:overflow-visible ${
         step === 3 && selectedCount > 0 ? 'pb-28 sm:pb-24' : 'pb-14'
       }`}
     >
@@ -570,7 +570,7 @@ export function RegistrationWizard() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-3 sm:px-6 -mt-8 relative z-10">
+      <main className="max-w-4xl mx-auto px-3 sm:px-6 -mt-8 print:mt-0 print:px-0 relative z-10">
         {/* Step Progress Bar: Compact Mobile Bar + Full Desktop Stepper */}
         <div className="no-print bg-white rounded-2xl shadow-lg shadow-slate-900/5 border border-slate-200/90 px-4 py-3.5 sm:px-6 sm:py-4 mb-5">
           {/* Mobile View (< 640px): Zero horizontal scroll */}
