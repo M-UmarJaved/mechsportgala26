@@ -8,6 +8,7 @@ import {
   Award,
   Banknote,
   Building2,
+  Calendar,
   Check,
   CheckCircle2,
   Clock,
@@ -558,6 +559,10 @@ export function RegistrationWizard() {
           </h1>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm">
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/60 text-amber-200 font-bold shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-amber-300" />
+              Tournament: 14 December – 18 December 2026
+            </span>
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Deadline: {settings.registration_deadline}
